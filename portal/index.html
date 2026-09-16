@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FDE Hub · 企业 AI 工程实战</title>
+  <meta name="description" content="前沿部署工程师 FDE 的项目展示门户 — 销售易 CRM × 飞书 × Trae AI Agent 实战项目、PRD、技术方案、课程资料" />
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- marked.js: MD 渲染 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- highlight.js: 代码高亮 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/github-dark.min.css" />
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/highlight.min.js"></script>
+</head>
+<body>
+
+<!-- ===== Top Nav ===== -->
+<header class="nav">
+  <div class="nav__inner container">
+    <a href="#/" class="nav__brand">
+      <span class="nav__logo">⚡</span>
+      <span class="nav__brand-name">FDE Hub</span>
+      <span class="nav__brand-sub">企业 AI 工程实战</span>
+    </a>
+    <nav class="nav__menu">
+      <a href="#/" data-route="/" class="nav__link">首页</a>
+      <a href="#/projects" data-route="/projects" class="nav__link">项目实战</a>
+      <a href="#/category/ai-agent" data-route="/category/ai-agent" class="nav__link">AI Agent</a>
+      <a href="#/category/crm-integration" data-route="/category/crm-integration" class="nav__link">CRM 集成</a>
+      <a href="#/category/prd" data-route="/category/prd" class="nav__link">PRD & 方案</a>
+      <a href="#/about" data-route="/about" class="nav__link">关于我</a>
+    </nav>
+    <div class="nav__right">
+      <span class="nav__online">
+        <span class="nav__dot"></span> 在线：<span id="online-count">--</span>
+      </span>
+      <button class="nav__cta" onclick="location.href='#/projects'">浏览项目</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== Main View ===== -->
+<main id="view">
+  <!-- 动态渲染 -->
+</main>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__col">
+      <div class="nav__brand">
+        <span class="nav__logo">⚡</span>
+        <span class="nav__brand-name">FDE Hub</span>
+      </div>
+      <p class="footer__desc">企业 AI 工程实战 · 前沿部署工程师项目展示门户。<br>让 AI 真正跑在业务上。</p>
+    </div>
+    <div class="footer__col">
+      <h4>项目分类</h4>
+      <a href="#/category/ai-agent">AI Agent & RAG</a>
+      <a href="#/category/crm-integration">CRM × 办公集成</a>
+      <a href="#/category/prd">PRD & 技术方案</a>
+      <a href="#/category/full-stack">全栈产品</a>
+    </div>
+    <div class="footer__col">
+      <h4>学习路线</h4>
+      <a href="#/roadmap">FDE 转型路线图</a>
+      <a href="#/projects">项目实战库</a>
+      <a href="#/about">关于作者</a>
+    </div>
+    <div class="footer__col">
+      <h4>联系方式</h4>
+      <p>📧 your@email.com</p>
+      <p>📚 飞书知识库 · 销售易开发者社区</p>
+    </div>
+  </div>
+  <div class="footer__copy">© 2026 FDE Hub · 基于 Trae + 飞书 + 销售易 CRM 搭建</div>
+</footer>
+
+<!-- ===== Templates (client-side render) ===== -->
+<script type="text/template" id="tpl-home">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero__grid">
+      <div class="hero__left">
+        <div class="hero__tags">
+          <span class="hero__tag">🏷️ B站UP主 / 独立开发者</span>
+          <span class="hero__tag hero__tag--hot">🔥 正在更新 第 N 个 AI Agent</span>
+        </div>
+        <h1 class="hero__title">
+          <strong>FDE Hub</strong>，<br>
+          帮你看懂 <span class="hero__hl">AI Agent</span> 如何落地企业业务。
+        </h1>
+        <p class="hero__desc">
+          不是只看 RAG / Agent 的论文和概念，而是从一个个<b>能跑起来的实战项目</b>开始：
+          销售易 CRM 数据如何接入飞书多维表格？Trae 怎样帮销售录一条跟进？
+          跟着做下来，你也能把 AI 真正跑在自己公司的业务流程上。
+        </p>
+        <div class="hero__cta">
+          <button class="btn btn--primary" onclick="location.href='#/projects'">🔍 浏览项目实战库</button>
+          <button class="btn btn--ghost" onclick="location.href='#/roadmap'">📘 FDE 转型路线图</button>
+        </div>
+        <div class="hero__stats">
+          <div class="stat"><strong>18+</strong><span>实战项目</span></div>
+          <div class="stat"><strong>50+</strong><span>PRD / 方案文档</span></div>
+          <div class="stat"><strong>全开源</strong><span>源码 + 完整教程</span></div>
+          <div class="stat"><strong>每月更新</strong><span>新项目 / 新技巧</span></div>
+        </div>
+      </div>
+
+      <!-- Personal Card (right) -->
+      <div class="hero__card">
+        <div class="card__dots"><span></span><span></span><span></span></div>
+        <div class="card__avatar">🧑‍💼</div>
+        <div class="card__name">你的名字</div>
+        <div class="card__title">前沿部署工程师 FDE<br>前 CRM 系统管理员</div>
+        <p class="card__quote">
+          "懂 CRM 和不懂 AI 的人，在企业数字化浪潮里的命运是截然不同的。
+          我想帮你成为那个能把 AI 真跑起来的人。"
+        </p>
+        <div class="card__badges">
+          <span>CRM 实施</span><span>AI Agent</span><span>PMP</span><span>中/英双语</span>
+        </div>
+        <div class="card__btns">
+          <button class="btn btn--primary btn--sm" onclick="location.href='#/about'">关于作者</button>
+          <button class="btn btn--ghost btn--sm" onclick="location.href='#/projects'">看项目</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Projects -->
+  <section class="section">
+    <div class="container">
+      <div class="section__head">
+        <h2>🎯 精选实战项目</h2>
+        <a href="#/projects" class="section__more">查看全部 →</a>
+      </div>
+      <p class="section__sub">每个项目都附完整 PRD、技术方案、核心代码，下载即跑。</p>
+      <div class="tabs" id="home-tabs">
+        <button class="tab active" data-cat="all">全部</button>
+        <button class="tab" data-cat="ai-agent">AI Agent / RAG</button>
+        <button class="tab" data-cat="crm-integration">CRM × 办公</button>
+        <button class="tab" data-cat="prd">PRD / 方案</button>
+      </div>
+      <div class="grid grid--cards" id="home-cards">
+        <!-- JS 渲染 -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Value Props -->
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section__head section__head--center">
+        <h2>💡 学习一个项目，你能得到什么</h2>
+        <p class="section__sub">不是给你一堆看不懂的代码，而是一整套能落地的企业 AI 方案素材。</p>
+      </div>
+      <div class="grid grid--4">
+        <div class="prop">
+          <div class="prop__icon">📄</div>
+          <h3>完整 PRD + 技术方案</h3>
+          <p>业务背景、场景拆解、架构设计、技术选型、对接链路，一份文档就把整个项目讲透。</p>
+        </div>
+        <div class="prop">
+          <div class="prop__icon">💻</div>
+          <h3>核心代码 + 配置清单</h3>
+          <p>前后端 + MCP 配置 + 飞书 Workflow + 销售易 CRM 映射，按文档一步步跑起来。</p>
+        </div>
+        <div class="prop">
+          <div class="prop__icon">🎓</div>
+          <h3>配套讲解 + 复盘</h3>
+          <p>从业务洞察到技术落地，每一步「为什么这么做」都讲清楚，面试直接聊细节。</p>
+        </div>
+        <div class="prop">
+          <div class="prop__icon">🚀</div>
+          <h3>可直接写进简历</h3>
+          <p>每个项目按 STAR 量化成果，技术栈清单齐全，毕设/面试/企业 POC 都拿得出手。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap -->
+  <section class="section">
+    <div class="container">
+      <div class="section__head">
+        <h2>🗺️ FDE 转型 4 周路线图</h2>
+        <a href="#/roadmap" class="section__more">查看完整 →</a>
+      </div>
+      <div class="roadmap">
+        <div class="roadmap__item">
+          <div class="roadmap__week">Week 1</div>
+          <h3>跑通 MVP 闭环</h3>
+          <p>CRM 飞书多维表格（已搭好）+ 极简版 FAQ 机器人 + 初步代码</p>
+        </div>
+        <div class="roadmap__item">
+          <div class="roadmap__week">Week 2</div>
+          <h3>深化 RAG 检索</h3>
+          <p>ChromaDB + BGE-M3 向量 + BM25 融合 + 重排 + FABE 话术生成</p>
+        </div>
+        <div class="roadmap__item">
+          <div class="roadmap__week">Week 3</div>
+          <h3>串联销售易 CRM</h3>
+          <p>entity-query / followup-create 全链路 + 双向同步 + 自动催办</p>
+        </div>
+        <div class="roadmap__item">
+          <div class="roadmap__week">Week 4</div>
+          <h3>包装成交付方案</h3>
+          <p>架构图 + 演示视频 + STAR 简历 + 企业 POC 话术</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Strip -->
+  <section class="cta-strip">
+    <div class="container cta-strip__inner">
+      <div>
+        <h3>🚀 从今天起，把 AI 跑在你的业务上</h3>
+        <p>跟着做一遍，比看 100 篇 RAG 论文更管用。</p>
+      </div>
+      <button class="btn btn--primary btn--lg" onclick="location.href='#/projects'">进入项目实战库 →</button>
+    </div>
+  </section>
+</script>
+
+<script type="text/template" id="tpl-projects">
+  <section class="page-header">
+    <div class="container">
+      <h1>🏗️ 项目实战库</h1>
+      <p class="page-header__sub">每个项目附完整 PRD + 技术方案 + 核心代码，下载即跑。</p>
+      <div class="page-header__ctrl">
+        <input id="search-box" placeholder="🔍 搜索项目关键词（CRM / RAG / Agent / 飞书 ...）" />
+        <div class="tabs" id="proj-tabs">
+          <button class="tab active" data-cat="all">全部</button>
+          <button class="tab" data-cat="ai-agent">AI Agent / RAG</button>
+          <button class="tab" data-cat="crm-integration">CRM × 办公</button>
+          <button class="tab" data-cat="prd">PRD / 方案</button>
+          <button class="tab" data-cat="full-stack">全栈产品</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="grid grid--cards" id="proj-cards">
+        <!-- JS 渲染 -->
+      </div>
+      <div id="empty-hint" class="empty" style="display:none;">
+        😶 没有匹配的项目。换个关键词试试？
+      </div>
+    </div>
+  </section>
+</script>
+
+<script type="text/template" id="tpl-project-detail">
+  <!-- JS 渲染 -->
+</script>
+
+<script type="text/template" id="tpl-category">
+  <section class="page-header">
+    <div class="container">
+      <h1 id="cat-title">📁 分类</h1>
+      <p class="page-header__sub" id="cat-desc"></p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="grid grid--cards" id="cat-cards">
+        <!-- JS 渲染 -->
+      </div>
+    </div>
+  </section>
+</script>
+
+<script type="text/template" id="tpl-roadmap">
+  <section class="page-header">
+    <div class="container">
+      <h1>🗺️ FDE 转型路线图</h1>
+      <p class="page-header__sub">从 CRM 管理员到前沿部署工程师 — 4 周冲刺，直接看成果。</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="roadmap roadmap--big">
+        <div class="roadmap__item roadmap__item--big">
+          <div class="roadmap__week">Week 1</div>
+          <h3>🏃 跑通 MVP 闭环</h3>
+          <ul>
+            <li>CRM 飞书多维表格（已搭好 ✅）</li>
+            <li>极简版飞书 FAQ 机器人（wiki 检索 + Trae LLM）</li>
+            <li>初步代码 + 可演示 Demo</li>
+            <li><strong>里程碑</strong>：有东西能放简历第一行了</li>
+          </ul>
+        </div>
+        <div class="roadmap__item roadmap__item--big">
+          <div class="roadmap__week">Week 2</div>
+          <h3>🧠 深化 RAG 检索</h3>
+          <ul>
+            <li>部署 ChromaDB + BGE-M3 向量模型</li>
+            <li>产品白皮书等 50+ 文档迁移到知识库</li>
+            <li>BM25 + RRF 融合 + bge-reranker 重排</li>
+            <li>FABE 法则话术生成 + 招投标初稿</li>
+            <li><strong>里程碑</strong>：RAG 测试报告 + 效果对比</li>
+          </ul>
+        </div>
+        <div class="roadmap__item roadmap__item--big">
+          <div class="roadmap__week">Week 3</div>
+          <h3>🔗 串联销售易 CRM</h3>
+          <ul>
+            <li>entity-query / entity-create 全链路打通</li>
+            <li>双向同步桥接脚本（飞书 ↔ 销售易）</li>
+            <li>自动催办 Workflow 上线</li>
+            <li><strong>里程碑</strong>：真实销售群能用你的 Agent</li>
+          </ul>
+        </div>
+        <div class="roadmap__item roadmap__item--big">
+          <div class="roadmap__week">Week 4</div>
+          <h3>🎓 包装成交付方案</h3>
+          <ul>
+            <li>架构图（飞书画板/Mermaid）+ 2 分钟演示视频</li>
+            <li>STAR 简历 5 个项目定稿</li>
+            <li>企业 POC 话术打磨</li>
+            <li><strong>里程碑</strong>：有作品集、有简历、有面试材料</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</script>
+
+<script type="text/template" id="tpl-about">
+  <section class="section">
+    <div class="container about">
+      <div class="about__card">
+        <div class="about__avatar">🧑‍💼</div>
+        <h1>你好，我是 <span class="hero__hl">你的名字</span></h1>
+        <p class="about__tagline">前沿部署工程师 FDE · 前 CRM 系统管理员 · AI 业务落地实战者</p>
+        <div class="about__badges">
+          <span>CRM 实施</span><span>AI Agent / RAG</span><span>PMP</span><span>中/英/日</span>
+        </div>
+        <h2>🛠️ 我擅长什么</h2>
+        <ul>
+          <li>从 0 到 1 设计并交付企业级 AI Agent 项目</li>
+          <li>销售易 CRM × 飞书 × ERP 的多系统集成</li>
+          <li>RAG 混合检索 + 重排 + FABE 生成的话术机器人</li>
+          <li>Trae / WorkBuddy / CloudBase 的低成本云原生方案</li>
+          <li>把 AI 技术翻译成销售、运营能听懂的业务语言</li>
+        </ul>
+        <h2>💼 典型项目</h2>
+        <ul>
+          <li>🚀 <a href="#/project/ltc-rag-bot">LTC 销售话术与招投标 RAG 问答机器人</a></li>
+          <li>🚀 <a href="#/project/crm-feishu-agent">CRM 飞书多维表格智能协作 Agent</a></li>
+        </ul>
+        <h2>📬 联系我</h2>
+        <p>如果你也想把 AI 跑在自己的业务流程上，欢迎交流：</p>
+        <p>📧 your@email.com</p>
+      </div>
+    </div>
+  </section>
+</script>
+
+<!-- ===== JS ===== -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
