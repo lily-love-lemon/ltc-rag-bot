@@ -1,0 +1,46 @@
+name: 🚀 Deploy to CloudBase
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # 支持手动触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🧪 Validate static assets
+        run: |
+          cd portal
+          echo "Checking required files..."
+          [ -f index.html ] || { echo "❌ index.html missing"; exit 1; }
+          [ -f css/style.css ] || { echo "❌ css/style.css missing"; exit 1; }
+          [ -f js/app.js ] || { echo "❌ js/app.js missing"; exit 1; }
+          [ -f js/data.js ] || { echo "❌ js/data.js missing"; exit 1; }
+          echo "✅ All core files present"
+          echo "📄 Docs count: $(find docs -name '*.md' | wc -l)"
+          echo "🖼️  Assets count: $(find assets -type f 2>/dev/null | wc -l)"
+
+      - name: 📦 Setup CloudBase CLI
+        run: |
+          npm install -g @cloudbase/cli@latest
+          tcb --version
+
+      - name: 🚀 Deploy to CloudBase Hosting
+        run: |
+          cd portal
+          tcb hosting deploy . -e ${{ secrets.TCB_ENV_ID }}
+        env:
+          TCB_ENV_ID: ${{ secrets.TCB_ENV_ID }}
+          TCB_SECRET_ID: ${{ secrets.TCB_SECRET_ID }}
+          TCB_SECRET_KEY: ${{ secrets.TCB_SECRET_KEY }}
+
+      - name: ✨ Post-deploy summary
+        run: |
+          echo "🎉 Deployment complete!"
+          echo "📂 Deployed path: portal/"
+          echo "🔗 CloudBase URL: https://${{ secrets.TCB_ENV_ID }}-xxx.tcloudbase.com"
+          echo "💡 Tip: Set CloudBase Hosting custom domain for best China CDN performance"

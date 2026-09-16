@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FDE Hub · 企业 AI 工程实战</title>
-  <meta name="description" content="前沿部署工程师 FDE 的项目展示门户 — 销售易 CRM × 飞书 × Trae AI Agent 实战项目、PRD、技术方案、课程资料" />
+  <meta name="description" content="前沿部署工程师 FDE 的项目展示门户 — IM/OA/CRM/BI × Codex/Trae/ AI Agent 实战项目、PRD、技术方案、课程资料" />
   <link rel="stylesheet" href="css/style.css" />
   <!-- marked.js: MD 渲染 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -68,9 +68,9 @@
       <a href="#/about">关于作者</a>
     </div>
     <div class="footer__col">
-      <h4>联系方式</h4>
-      <p>📧 your@email.com</p>
-      <p>📚 飞书知识库 · 销售易开发者社区</p>
+      <h4>联系方式</+(86)13021026562>
+      <p>📧 lily.wang870625@gmail.com</p>
+      <p>📚  FDE开发者社区</p>
     </div>
   </div>
   <div class="footer__copy">© 2026 FDE Hub · 基于 Trae + 飞书 + 销售易 CRM 搭建</div>
@@ -108,21 +108,61 @@
       </div>
 
       <!-- Personal Card (right) -->
-      <div class="hero__card">
+      <div class="hero__card glass">
         <div class="card__dots"><span></span><span></span><span></span></div>
-        <div class="card__avatar">🧑‍💼</div>
+        <div class="card__avatar-wrap">
+          <svg class="card__avatar" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#0969DA"/>
+                <stop offset="1" stop-color="#8250DF"/>
+              </linearGradient>
+              <linearGradient id="faceGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFD8B4"/>
+                <stop offset="1" stop-color="#FFB98A"/>
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#bgGrad)"/>
+            <!-- shoulders -->
+            <ellipse cx="60" cy="112" rx="42" ry="22" fill="#0D1117" opacity=".85"/>
+            <rect x="18" y="90" width="84" height="30" rx="14" fill="#0D1117" opacity=".85"/>
+            <!-- neck -->
+            <rect x="50" y="74" width="20" height="20" rx="4" fill="url(#faceGrad)"/>
+            <!-- head -->
+            <ellipse cx="60" cy="54" rx="26" ry="30" fill="url(#faceGrad)"/>
+            <!-- hair -->
+            <path d="M34 50 Q36 30 60 28 Q84 30 86 50 Q86 42 74 38 Q60 34 46 38 Q34 42 34 50Z" fill="#161B22"/>
+            <!-- eyes -->
+            <circle cx="50" cy="54" r="2.5" fill="#161B22"/>
+            <circle cx="70" cy="54" r="2.5" fill="#161B22"/>
+            <circle cx="51" cy="53" r=".8" fill="#fff"/>
+            <circle cx="71" cy="53" r=".8" fill="#fff"/>
+            <!-- smile -->
+            <path d="M52 64 Q60 70 68 64" stroke="#161B22" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <!-- tech glow -->
+            <circle cx="60" cy="60" r="56" fill="none" stroke="#58A6FF" stroke-width="1" opacity=".4" filter="url(#glow)"/>
+          </svg>
+          <span class="card__avatar-ring"></span>
+          <span class="card__avatar-badge">FDE</span>
+        </div>
         <div class="card__name">你的名字</div>
-        <div class="card__title">前沿部署工程师 FDE<br>前 CRM 系统管理员</div>
+        <div class="card__title">前沿部署工程师 FDE · 前 CRM 系统管理员</div>
         <p class="card__quote">
-          "懂 CRM 和不懂 AI 的人，在企业数字化浪潮里的命运是截然不同的。
-          我想帮你成为那个能把 AI 真跑起来的人。"
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#58A6FF" style="vertical-align:-4px;margin-right:4px;">
+            <path d="M9 7H5a2 2 0 00-2 2v4a2 2 0 002 2h2v2a2 2 0 01-2 2H4v2h1a4 4 0 004-4V9a2 2 0 00-2-2h2zm10 0h-4a2 2 0 00-2 2v4a2 2 0 002 2h2v2a2 2 0 01-2 2h-1v2h1a4 4 0 004-4V9a2 2 0 00-2-2h2z"/>
+          </svg>
+          "懂 CRM 和不懂 AI 的人，在企业数字化浪潮里的命运是截然不同的。我想帮你成为那个能把 AI 真跑起来的人。"
         </p>
         <div class="card__badges">
           <span>CRM 实施</span><span>AI Agent</span><span>PMP</span><span>中/英双语</span>
         </div>
         <div class="card__btns">
-          <button class="btn btn--primary btn--sm" onclick="location.href='#/about'">关于作者</button>
-          <button class="btn btn--ghost btn--sm" onclick="location.href='#/projects'">看项目</button>
+          <button class="btn btn--primary btn--sm btn--3d" onclick="location.href='#/about'">✨ 关于作者</button>
+          <button class="btn btn--ghost btn--sm btn--3d" onclick="location.href='#/projects'">🚀 看项目</button>
         </div>
       </div>
     </div>
@@ -330,32 +370,191 @@
 </script>
 
 <script type="text/template" id="tpl-about">
-  <section class="section">
-    <div class="container about">
-      <div class="about__card">
-        <div class="about__avatar">🧑‍💼</div>
-        <h1>你好，我是 <span class="hero__hl">你的名字</span></h1>
-        <p class="about__tagline">前沿部署工程师 FDE · 前 CRM 系统管理员 · AI 业务落地实战者</p>
-        <div class="about__badges">
-          <span>CRM 实施</span><span>AI Agent / RAG</span><span>PMP</span><span>中/英/日</span>
+  <section class="about-hero">
+    <div class="container about-hero__grid">
+      <!-- Left column: avatar + intro -->
+      <div class="about-hero__left card card--hero3d">
+        <div class="card__dots"><span></span><span></span><span></span></div>
+        <div class="card__avatar-wrap card__avatar-wrap--lg">
+          <svg class="card__avatar" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bgGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#0969DA"/><stop offset="1" stop-color="#8250DF"/>
+              </linearGradient>
+              <linearGradient id="faceGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFD8B4"/><stop offset="1" stop-color="#FFB98A"/>
+              </linearGradient>
+            </defs>
+            <circle cx="60" cy="60" r="58" fill="url(#bgGrad2)"/>
+            <ellipse cx="60" cy="112" rx="42" ry="22" fill="#0D1117" opacity=".85"/>
+            <rect x="18" y="90" width="84" height="30" rx="14" fill="#0D1117" opacity=".85"/>
+            <rect x="50" y="74" width="20" height="20" rx="4" fill="url(#faceGrad2)"/>
+            <ellipse cx="60" cy="54" rx="26" ry="30" fill="url(#faceGrad2)"/>
+            <path d="M34 50 Q36 30 60 28 Q84 30 86 50 Q86 42 74 38 Q60 34 46 38 Q34 42 34 50Z" fill="#161B22"/>
+            <circle cx="50" cy="54" r="2.5" fill="#161B22"/>
+            <circle cx="70" cy="54" r="2.5" fill="#161B22"/>
+            <path d="M52 64 Q60 70 68 64" stroke="#161B22" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </svg>
+          <span class="card__avatar-badge card__avatar-badge--lg">FDE</span>
         </div>
-        <h2>🛠️ 我擅长什么</h2>
-        <ul>
-          <li>从 0 到 1 设计并交付企业级 AI Agent 项目</li>
-          <li>销售易 CRM × 飞书 × ERP 的多系统集成</li>
-          <li>RAG 混合检索 + 重排 + FABE 生成的话术机器人</li>
-          <li>Trae / WorkBuddy / CloudBase 的低成本云原生方案</li>
-          <li>把 AI 技术翻译成销售、运营能听懂的业务语言</li>
-        </ul>
-        <h2>💼 典型项目</h2>
-        <ul>
-          <li>🚀 <a href="#/project/ltc-rag-bot">LTC 销售话术与招投标 RAG 问答机器人</a></li>
-          <li>🚀 <a href="#/project/crm-feishu-agent">CRM 飞书多维表格智能协作 Agent</a></li>
-        </ul>
-        <h2>📬 联系我</h2>
-        <p>如果你也想把 AI 跑在自己的业务流程上，欢迎交流：</p>
-        <p>📧 your@email.com</p>
+        <div class="about-hero__name">你的名字</div>
+        <div class="about-hero__tags">
+          <span class="tag tag--fde">前沿部署工程师 FDE</span>
+          <span class="tag">CRM 实施专家</span>
+          <span class="tag">AI 业务落地</span>
+        </div>
+        <div class="about-hero__socials">
+          <a class="social-btn" href="#" title="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0012 .3"/></svg>
+          </a>
+          <a class="social-btn" href="#" title="飞书">💬</a>
+          <a class="social-btn" href="#" title="微信">💚</a>
+          <a class="social-btn social-btn--cta" href="mailto:your@email.com">✉️ 联系我</a>
+        </div>
       </div>
+
+      <!-- Right column: intro + timeline -->
+      <div class="about-hero__right">
+        <h1 class="about-hero__title">
+          你好，我是 <span class="hero__hl">你的名字</span>。<br>
+          我想帮企业把 <strong>AI 真跑在业务上</strong>。
+        </h1>
+        <p class="about-hero__desc">
+          FDE Hub 不只是一个项目展示站 — 它是一个 AI 业务落地的实战训练场。
+          我把自己从 CRM 管理员转型 FDE 过程中踩过的坑、写过的 PRD、交付过的 Agent，
+          全部结构化地沉淀在这里。你可以跟着做、可以直接复用、可以拿去给你的客户做 POC。
+        </p>
+
+        <!-- Journey timeline -->
+        <div class="journey">
+          <div class="journey__item">
+            <div class="journey__num">01</div>
+            <div class="journey__body">
+              <h4>CRM 系统管理员</h4>
+              <p>销售易 CRM + 飞书多维表格 6 年实施经验，懂业务、懂配置、懂销售团队的真实痛点。</p>
+            </div>
+          </div>
+          <div class="journey__item">
+            <div class="journey__num">02</div>
+            <div class="journey__body">
+              <h4>发现 AI 机会</h4>
+              <p>Trae / WorkBuddy 出现后，意识到「CRM 配置能力 × AI 工程能力」可以直接交付企业价值。</p>
+            </div>
+          </div>
+          <div class="journey__item">
+            <div class="journey__num">03</div>
+            <div class="journey__body">
+              <h4>亲自下场造轮子</h4>
+              <p>从 0 到 1 搭建 RAG 话术机器人、CRM 多维表格 Agent、数据同步桥接 — 全部真实跑通。</p>
+            </div>
+          </div>
+          <div class="journey__item">
+            <div class="journey__num">04</div>
+            <div class="journey__body">
+              <h4>沉淀 FDE Hub</h4>
+              <p>把项目 + PRD + 技术方案全部开源，给同样想转型 FDE 的朋友一份可复用的起点。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About body: 经历 / 愿景 / 我能帮你 -->
+  <section class="about-body">
+    <div class="container about-body__grid">
+
+      <!-- 左列：经历 -->
+      <div class="about-body__left">
+        <h3 class="sec-title">📜 我的经历</h3>
+        <div class="exp-card card card--tilt">
+          <div class="exp-card__head">
+            <span class="exp-card__tag">学习背景</span>
+            <span class="exp-card__year">6 年 CRM 实施</span>
+          </div>
+          <h4>销售易 CRM + 飞书多维表格 · 系统落地</h4>
+          <p>负责过 20+ 企业客户的 CRM 实施、流程梳理、数据迁移。理解从销售线索到回款的 LTC 全链路，知道每一步哪些数据该采集、哪些动作可以自动化。</p>
+        </div>
+
+        <div class="exp-card card card--tilt">
+          <div class="exp-card__head">
+            <span class="exp-card__tag">业务视角</span>
+            <span class="exp-card__year">2026 AI 转型</span>
+          </div>
+          <h4>从 CRM 管理员到 FDE 前沿部署工程师</h4>
+          <p>Trae Agent + 销售易 MCP + 飞书多维表格，让我第一次感觉到「原来我不用写一行后端代码，也能交付企业级 AI Agent」。这条路值得被更多人知道。</p>
+        </div>
+      </div>
+
+      <!-- 右列：愿景 -->
+      <div class="about-body__right">
+        <h3 class="sec-title">🌟 我的愿景</h3>
+        <div class="vision-card card">
+          <p>
+            希望每一个有 CRM / ERP / OA 实施背景的人，都能在 AI 时代拿到一张入场券。
+            不是只会调 prompt，不是只会用 AI 工具帮你做个东西 —
+            而是能理解业务、拆解需求、交付项目，真正成为那个能把 AI 跑起来的人。
+          </p>
+          <div class="vision-card__sign">— 你的名字</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About body 2: 我能帮你什么 + 故事 -->
+  <section class="about-body about-body--alt">
+    <div class="container about-body__grid2">
+
+      <!-- 左：我能帮你什么（2×2） -->
+      <div class="about-body__help">
+        <h3 class="sec-title">🎯 我能帮你什么</h3>
+        <div class="help-grid">
+          <a class="help-card card card--tilt" href="#/project/ltc-rag-bot">
+            <div class="help-card__icon">🧠</div>
+            <h4>用 RAG 做销售超级大脑</h4>
+            <p>产品白皮书 → 向量化 → 混合检索 → FABE 话术生成，跟着项目一步步跑通。</p>
+          </a>
+          <a class="help-card card card--tilt" href="#/project/crm-feishu-agent">
+            <div class="help-card__icon">🔗</div>
+            <h4>把 CRM 录入变成对话</h4>
+            <p>飞书多维表格 + 销售易 MCP，语音就能录线索、自动催办、双向同步。</p>
+          </a>
+          <a class="help-card card card--tilt" href="#/roadmap">
+            <div class="help-card__icon">🗺️</div>
+            <h4>FDE 转型路线图</h4>
+            <p>4 周冲刺计划，每周目标明确，带简历 STAR 模板和 POC 话术。</p>
+          </a>
+          <a class="help-card card card--tilt" href="#/category/prd">
+            <div class="help-card__icon">📐</div>
+            <h4>标准化 PRD 模板</h4>
+            <p>业务场景拆解 × 技术选型 × 交付计划，拿来即用的 FDE 工作模板。</p>
+          </a>
+        </div>
+      </div>
+
+      <!-- 右：我的故事 -->
+      <div class="about-body__stories">
+        <h3 class="sec-title">📖 我的故事</h3>
+        <ul class="story-list">
+          <li>
+            <h4>从一个 CRM Excel 说起</h4>
+            <p>第一次做 CRM 实施时，销售手里拿着一个 20 列的 Excel，我花了 3 天把它变成多维表格 + 自动化工作流。</p>
+          </li>
+          <li>
+            <h4>Trae 出现那天，我意识到...</h4>
+            <p>那天我用 Trae 把销售语音转写成了 CRM 跟进记录。整个过程没有写一行后端。我知道 FDE 这条路走对了。</p>
+          </li>
+          <li>
+            <h4>做这个门户的初衷</h4>
+            <p>很多 CRM 同事说「AI 太难了我不会」。我想让他们看到：你的业务经验 + AI 工具链，能交付很多真正有价值的东西。</p>
+          </li>
+        </ul>
+        <p class="story-list__cta">
+          欢迎交流你的故事 →
+          <a href="mailto:your@email.com">✉️ your@email.com</a>
+        </p>
+      </div>
+
     </div>
   </section>
 </script>
