@@ -9,7 +9,7 @@ LTC 销售话术与招投标 RAG 问答机器人 · v3.0（CloudBase 免费版�
 
 架构: FastAPI → SimpleVectorStore (numpy .npy + JSON) → TF-IDF + BM25 + RRF → LLM → 飞书
 """
-import os, uuid, json, re, math, tempfile
+import os, uuid, json, re, math, tempfile, hashlib, base64
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -22,7 +22,7 @@ try:
 except ImportError:
     JIEBA_AVAILABLE = False
 
-from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends, Query
+from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends, Query, Request
 from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse, FileResponse
 from pypdf import PdfReader
@@ -490,6 +490,38 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
 # ═══════════════════════════════════════════════════════════════════
 FEISHU_APP_ID     = os.environ.get("FEISHU_APP_ID", "")
 FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
+FEISHU_ENCRYPT_KEY = os.environ.get("FEISHU_ENCRYPT_KEY", "").strip()
+FEISHU_VERIFICATION_TOKEN = os.environ.get("FEISHU_VERIFICATION_TOKEN", "").strip()
+
+# 事件去重内存 set（进程级，重启清空）
+_EVENT_IDS = set()
+
+def _feishu_decrypt(encrypt_str: str) -> dict:
+    """飞书 AES-256-CBC 加密解密（pycryptodome）"""
+    if not FEISHU_ENCRYPT_KEY:
+        raise ValueError("FEISHU_ENCRYPT_KEY not configured")
+    from Crypto.Cipher import AES
+    key = hashlib.sha256(FEISHU_ENCRYPT_KEY.encode("utf-8")).digest()
+    raw = base64.b64decode(encrypt_str)
+    iv = raw[:16]
+    ciphertext = raw[16:]
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    decrypted = cipher.decrypt(ciphertext)
+    pad_len = decrypted[-1]
+    if 1 <= pad_len <= 16 and decrypted[-pad_len:] == bytes([pad_len]) * pad_len:
+        decrypted = decrypted[:-pad_len]
+    return json.loads(decrypted.decode("utf-8"))
+
+
+def _is_duplicate_event(event_id: str) -> bool:
+    if not event_id:
+        return False
+    if event_id in _EVENT_IDS:
+        return True
+    _EVENT_IDS.add(event_id)
+    if len(_EVENT_IDS) > 10000:
+        _EVENT_IDS.clear()
+    return False
 
 def feishu_token():
     if not FEISHU_APP_ID or not FEISHU_APP_SECRET:
@@ -993,62 +1025,135 @@ async def query(body: dict, _: bool = Depends(verify_api_key)):
         },
     })
 
-# ── 飞书 Webhook ──
+# ── 飞书 Webhook（增强版 v2）──
 
 @app.post("/webhook")
-async def webhook(payload: dict):
-    """飞书事件回调（飞书自鉴，不加 API Key）"""
-    if "challenge" in payload:
-        return {"challenge": payload["challenge"]}
-
-    evt = payload.get("event", {})
-    msg = evt.get("message", {})
-
-    if msg.get("message_type") != "text":
-        return {"ok": True}
-
+async def webhook(payload: dict, request: Request):
+    """飞书事件回调 · 带加密解密 + token 校验 + 事件去重 + 完整日志"""
     try:
-        text = json.loads(msg.get("content", "{}")).get("text", "").strip()
-    except Exception:
-        text = ""
+        raw = await request.body()
+        print(f"[webhook] ← 收到 {len(raw)} bytes")
 
-    if not text or text.startswith("/"):
-        return {"ok": True}
+        # 1. 解密（如果飞书发的是加密格式）
+        if "encrypt" in payload and FEISHU_ENCRYPT_KEY:
+            try:
+                payload = _feishu_decrypt(payload["encrypt"])
+                print("[webhook] 🔓 解密成功")
+            except Exception as e:
+                print(f"[webhook] ❌ 解密失败: {e}")
+                return {"ok": False, "error": "decrypt_failed"}
 
-    text = re.sub(r'<at[^>]*>.*?</at>', '', text).strip()
-    if not text:
-        return {"ok": True}
+        # 2. Verification Token 校验（可选，不配就跳过）
+        if FEISHU_VERIFICATION_TOKEN:
+            token = payload.get("token", "")
+            if token and token != FEISHU_VERIFICATION_TOKEN:
+                print(f"[webhook] ❌ token mismatch (got={token[:8]}..)")
+                return {"ok": False}
 
-    print(f"[webhook] 收到消息: '{text}'")
+        # 3. URL Verification（飞书回调配置时发的 challenge）
+        if "challenge" in payload and "type" in payload:
+            print("[webhook] ← URL verification challenge")
+            return {"challenge": payload["challenge"]}
 
-    result = await query({"question": text}, _=True)
-    answer_text = result.body.decode() if hasattr(result, 'body') else json.dumps(result)
-    try:
-        answer_json = json.loads(answer_text)
-        reply = answer_json.get("answer", str(answer_text))
-    except Exception:
-        reply = str(answer_text)
+        # 4. Ping / Heartbeat
+        if payload.get("type") == "ping":
+            return {"ok": True}
 
-    token = feishu_token()
-    if token:
+        # 5. 事件去重
+        event_id = payload.get("header", {}).get("event_id", "")
+        if event_id and _is_duplicate_event(event_id):
+            print(f"[webhook] ↻ 重复事件跳过: {event_id[:12]}")
+            return {"ok": True}
+
+        # 6. 提取消息
+        evt = payload.get("event", {})
+        msg = evt.get("message", {})
+        header_type = payload.get("header", {}).get("event_type", "")
+        chat_type = msg.get("chat_type", "")
+        msg_type = msg.get("message_type", "")
+
+        print(f"[webhook] 📋 event={header_type} chat={chat_type} msg={msg_type} "
+              f"chat_id={msg.get('chat_id','')[:12]}... sender={evt.get('sender',{}).get('sender_id',{}).get('open_id','')[:12]}...")
+
+        if msg_type != "text":
+            print(f"[webhook] ⏭️ 非文本消息，跳过")
+            return {"ok": True}
+
+        try:
+            text = json.loads(msg.get("content", "{}")).get("text", "").strip()
+        except Exception:
+            text = ""
+
+        if not text:
+            print("[webhook] ⏭️ 空文本")
+            return {"ok": True}
+
+        # 7. 去掉 @机器人 的 mention tag
+        original_text = text
+        text = re.sub(r'<at[^>]*>.*?</at>', '', text).strip()
+        text = re.sub(r'@\S+\s*', '', text).strip()
+        text = text.replace('@_user_1', '').strip()
+
+        if not text:
+            print(f"[webhook] ⏭️ 只有 @mention，无实际内容 (raw='{original_text[:50]}')")
+            return {"ok": True}
+
+        if text.startswith("/"):
+            print(f"[webhook] ⏭️ 命令消息，跳过: {text[:30]}")
+            return {"ok": True}
+
+        print(f"[webhook] 💬 处理消息: '{text[:80]}'")
+
+        # 8. RAG 查询
+        reply = ""
+        try:
+            result = await query({"question": text}, _=True)
+            answer_text = result.body.decode() if hasattr(result, 'body') else json.dumps(result)
+            try:
+                reply = json.loads(answer_text).get("answer", str(answer_text))
+            except Exception:
+                reply = str(answer_text)
+        except Exception as e:
+            print(f"[webhook] ❌ RAG 查询失败: {e}")
+            reply = f"⚠️ 查询出错: {str(e)[:200]}"
+
+        # 9. 飞书回复
+        token = feishu_token()
+        if not token:
+            print("[webhook] ❌ 无 FEISHU_APP_ID/SECRET，跳过回复")
+            return {"ok": True}
+
+        chat_id = msg.get("chat_id", "")
+        if not chat_id:
+            print("[webhook] ❌ 无 chat_id，跳过回复")
+            return {"ok": True}
+
         try:
             r = requests.post(
                 "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id",
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 json={
-                    "receive_id": msg.get("chat_id"),
+                    "receive_id": chat_id,
                     "msg_type": "text",
                     "content": json.dumps({"text": reply[:4000]}),
                 },
-                timeout=10,
+                timeout=15,
             )
-            print(f"[webhook] 飞书回复: {r.status_code} {r.json()}")
+            resp = r.json()
+            if resp.get("code") == 0:
+                print(f"[webhook] ✅ 飞书回复成功 (chat={chat_id[:12]})")
+            else:
+                print(f"[webhook] ❌ 飞书回复失败: code={resp.get('code')} msg={resp.get('msg')}")
         except Exception as e:
-            print(f"[webhook] 发送飞书消息失败: {e}")
-    else:
-        print(f"[webhook] ⚠️ 无飞书凭证，跳过发送。reply={reply[:100]}...")
+            print(f"[webhook] ❌ 发送飞书异常: {e}")
 
-    return {"ok": True, "reply_preview": reply[:150]}
+        return {"ok": True}
+
+    except Exception as e:
+        print(f"[webhook] ❌ 顶层异常: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)[:200]}
 
 
 # ═══════════════════════════════════════════════════════════════════
