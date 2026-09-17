@@ -1,0 +1,10 @@
+services:
+  - name: ltc-rag-bot
+    type: web
+    dockerfilePath: Dockerfile
+    env:
+      - key: NODE_VERSION
+        value: "20"
+    plan: free
+    # Render 免费层会自动注入 PORT
+    # .env 里的 key 在 Render 后台单独配置（更安全）

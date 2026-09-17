@@ -59,7 +59,7 @@ except Exception as e:
 # ═══════════════════════════════════════════════════════════════════
 # ② ChromaDB 初始化
 # ═══════════════════════════════════════════════════════════════════
-CHROMA_PATH = str(Path(__file__).parent / "chroma_data")
+CHROMA_PATH = os.environ.get("CHROMA_PATH", str(Path(__file__).parent / "chroma_data"))
 CHROMA = chromadb.PersistentClient(path=CHROMA_PATH)
 COL = CHROMA.get_or_create_collection(
     name="ltc_knowledge",
@@ -768,4 +768,6 @@ async def webhook(payload: dict):
 # ═══════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
+    port = int(os.environ.get("PORT", 8001))
+    print(f"🚀 LTC RAG Bot v2.0 启动 · port={port} · embedding={EMBEDDING_NAME}")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
