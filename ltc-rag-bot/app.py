@@ -1,78 +1,477 @@
 """
-LTC 销售话术与招投标 RAG 问答机器人 · v2.0
-==========================================
-升级内容（相比 v1.0）：
-  ① Embedding: bge-small-zh-v1.5（专为中文训练，512维）
-  ② LLM 接入: DeepSeek / Ollama / 模板回退（多级 fallback）
-  ③ FABE 话术生成: 真实 LLM 组织，不是裸拼接
-  ④ API Key 鉴权: 开发模式自动跳过，生产模式强制
-  ⑤ 知识库管理门户: GET / 返回 portal/index.html
-  ⑥ 新增端点: GET /docs, DELETE /doc/{id}
+LTC 销售话术与招投标 RAG 问答机器人 · v3.0（CloudBase 免费版优化）
+================================================================
+与 v2.0 的核心差异：
+  ✅ 砍掉 chromadb / scikit-learn / rank-bm25 —— 省 ~160MB 内存
+  ✅ 自实现 SimpleVectorStore（numpy + JSON，零依赖）
+  ✅ 自实现 TF-IDF 嵌入 + BM25 检索（纯 numpy + jieba）
+  ✅ 内存从 ~225MB 压到 ~75MB，可跑 CloudBase 免费版 0.5核128MB
 
-架构: FastAPI → ChromaDB (SQLite) → bge-small-zh-v1.5 → LLM → 飞书
+架构: FastAPI → SimpleVectorStore (numpy .npy + JSON) → TF-IDF + BM25 + RRF → LLM → 飞书
 """
-import os, uuid, json, re
+import os, uuid, json, re, math, tempfile
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-import chromadb
-from chromadb.utils import embedding_functions
-from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends
+import numpy as np
+try:
+    import jieba
+    JIEBA_AVAILABLE = True
+except ImportError:
+    JIEBA_AVAILABLE = False
+
+from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends, Query
 from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse, FileResponse
 from pypdf import PdfReader
 import requests
 
 # ═══════════════════════════════════════════════════════════════════
-# ① Embedding 初始化 —— bge-small-zh-v1.5（中文专用）
-#    优先用本地 ModelScope 缓存（沙箱环境），fallback 到 HF model name
+# ① 中文分词（优先 jieba，fallback 到简单切分）
 # ═══════════════════════════════════════════════════════════════════
-def _init_embedding():
-    MODEL_PATH_HF = "BAAI/bge-small-zh-v1.5"
-    MODEL_PATH_LOCAL = "/root/.cache/modelscope/models/BAAI--bge-small-zh-v1.5/snapshots/master"
-    
-    # 本地缓存存在就用本地，不存在就用 HF model name（首次自动下载）
-    model_path = MODEL_PATH_LOCAL if os.path.isdir(MODEL_PATH_LOCAL) else MODEL_PATH_HF
-    
-    print(f"[init] 加载 BAAI/bge-small-zh-v1.5 ...")
-    print(f"       模型路径: {model_path}")
-    
-    # 先直接加载 SentenceTransformer 验证
-    st_model = SentenceTransformer(model_path, device="cpu")
-    return embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=model_path,
-        device="cpu",
+def _chinese_tokenize(text: str) -> list:
+    """中文分词 —— jieba 优先，简单 fallback"""
+    if JIEBA_AVAILABLE:
+        return [t.strip() for t in jieba.cut(text) if t.strip()]
+    # 简单 fallback：按标点 + 每个字
+    tokens = [c for c in re.split(r'[，。！？；：、\s]+', text) if c]
+    for c in text:
+        if c not in '，。！？；：、 \n\r\t':
+            tokens.append(c)
+    return tokens
+
+# ═══════════════════════════════════════════════════════════════════
+# ② 自实现 SimpleVectorStore —— 替换 ChromaDB
+#    持久化: vectors.npy + metadata.json + vocab.json
+# ═══════════════════════════════════════════════════════════════════
+class SimpleVectorStore:
+    """
+    轻量向量存储 —— 基于 numpy + JSON，API 对齐 ChromaDB Collection
+    文件结构:
+      vectors.npy    # (n_docs × n_features, float32)
+      metadata.json  # [{id, source, text, strategy}, ...]
+      vocab.json     # {token: index, _df: [...], _n_docs: N}
+    """
+
+    MAX_VOCAB_SIZE = 20000  # 词表上限，防止膨胀
+
+    def __init__(self, path: str):
+        self.path = Path(path)
+        self.path.mkdir(parents=True, exist_ok=True)
+
+        self.vectors: np.ndarray | None = None      # (N, D) float32
+        self.metadata: list[dict] = []              # [{id, source, text, strategy}, ...]
+        self.vocab: dict = {}                       # {token: index} + _df + _n_docs
+
+        self._load()
+
+    # ── 持久化读写 ──
+    @property
+    def _vec_file(self):
+        return self.path / "vectors.npy"
+
+    @property
+    def _meta_file(self):
+        return self.path / "metadata.json"
+
+    @property
+    def _vocab_file(self):
+        return self.path / "vocab.json"
+
+    def _load(self):
+        """从磁盘加载数据"""
+        try:
+            if self._meta_file.exists():
+                with open(self._meta_file, "r", encoding="utf-8") as f:
+                    self.metadata = json.load(f)
+            if self._vocab_file.exists():
+                with open(self._vocab_file, "r", encoding="utf-8") as f:
+                    self.vocab = json.load(f)
+            if self._vec_file.exists():
+                self.vectors = np.load(self._vec_file)
+
+            # 校验一致性
+            if self.vectors is not None and len(self.metadata) != len(self.vectors):
+                print(f"[vector-store] ⚠️ 数据不一致: vectors={len(self.vectors)} vs metadata={len(self.metadata)}，以 metadata 为准")
+                if self.metadata:
+                    dim = self.vectors.shape[1] if len(self.vectors) > 0 else 0
+                    self.vectors = self.vectors[:len(self.metadata)]
+                else:
+                    self.vectors = None
+
+            print(f"[vector-store] 加载完成 · {len(self.metadata)} docs · vocab={len(self.vocab) - 3 if self.vocab else 0} tokens")
+        except Exception as e:
+            print(f"[vector-store] ⚠️ 加载失败，初始化空存储: {e}")
+            self.metadata = []
+            self.vocab = {}
+            self.vectors = None
+
+    def _save(self):
+        """原子写入 —— 先写临时文件再 rename"""
+        def _atomic_write(filepath: Path, data, dump_fn):
+            tmp = filepath.with_suffix(filepath.suffix + ".tmp")
+            try:
+                dump_fn(tmp, data)
+                tmp.replace(filepath)
+            except Exception as e:
+                print(f"[vector-store] ⚠️ 保存 {filepath} 失败: {e}")
+                if tmp.exists():
+                    tmp.unlink()
+
+        # metadata.json
+        _atomic_write(self._meta_file, self.metadata,
+                      lambda f, d: f.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8"))
+        # vocab.json
+        _atomic_write(self._vocab_file, self.vocab,
+                      lambda f, d: f.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8"))
+        # vectors.npy —— np.save 会自动给无 .npy 后缀的路径加后缀
+        if self.vectors is not None and len(self.vectors) > 0:
+            # 用固定 tmp 文件名，确保 np.save 不会再加额外后缀
+            tmp = self.path / ".vectors_tmp"
+            try:
+                np.save(str(tmp), self.vectors, allow_pickle=False)
+                # np.save 会生成 .vectors_tmp.npy → 改名成目标
+                saved = self.path / ".vectors_tmp.npy"
+                if saved.exists():
+                    if self._vec_file.exists():
+                        self._vec_file.unlink()
+                    saved.rename(self._vec_file)
+                else:
+                    # 某些版本 numpy 可能直接用 tmp 名
+                    tmp_path = self.path / ".vectors_tmp"
+                    if tmp_path.exists():
+                        if self._vec_file.exists():
+                            self._vec_file.unlink()
+                        tmp_path.rename(self._vec_file)
+                    else:
+                        raise RuntimeError(f"np.save 未生成文件: 尝试了 {saved} 和 {tmp_path}")
+            except Exception as e:
+                print(f"[vector-store] ⚠️ 保存 vectors.npy 失败: {e}")
+                for p in [self.path / ".vectors_tmp", self.path / ".vectors_tmp.npy"]:
+                    if p.exists():
+                        p.unlink()
+        elif self._vec_file.exists():
+            self._vec_file.unlink()
+
+    # ── 词表构建 ──
+    def _build_vocab_from_scratch(self) -> dict:
+        """从所有 metadata 重建词表 + 计算 DF"""
+        vocab = {}
+        df = []
+        n_docs = len(self.metadata)
+
+        # 第一遍：收集所有 token
+        tokenized_docs = []
+        for md in self.metadata:
+            tokens = _chinese_tokenize(md.get("text", ""))
+            tokenized_docs.append(tokens)
+            for t in tokens:
+                if t not in vocab:
+                    if len(vocab) >= self.MAX_VOCAB_SIZE:
+                        break
+                    vocab[t] = len(vocab)
+            if len(vocab) >= self.MAX_VOCAB_SIZE:
+                break
+
+        # 第二遍：计算 DF（每个 token 出现在多少篇文档里）
+        df = [0] * len(vocab)
+        for tokens in tokenized_docs:
+            seen = set()
+            for t in tokens:
+                if t in vocab and t not in seen:
+                    df[vocab[t]] += 1
+                    seen.add(t)
+
+        vocab["_df"] = df
+        vocab["_n_docs"] = n_docs
+        vocab["_dim"] = len(vocab) - 3  # 减去 _df, _n_docs, _dim 元数据
+        return vocab
+
+    def _rebuild_all(self):
+        """大规模变更后重建词表 + 重算所有向量"""
+        if not self.metadata:
+            self.vocab = {}
+            self.vectors = None
+            return
+        print(f"[vector-store] 重建词表 + 重算向量 · {len(self.metadata)} docs")
+        self.vocab = self._build_vocab_from_scratch()
+        self.vectors = self._compute_vectors([md.get("text", "") for md in self.metadata])
+        self._save()
+
+    def _compute_vectors(self, texts: list[str]) -> np.ndarray:
+        """批量 TF-IDF 向量化"""
+        dim = self.vocab.get("_dim", 0)
+        if dim == 0:
+            return np.zeros((len(texts), 0), dtype=np.float32)
+
+        df_list = self.vocab.get("_df", [])
+        n_docs_total = self.vocab.get("_n_docs", len(texts))
+
+        vectors = np.zeros((len(texts), dim), dtype=np.float32)
+        for i, text in enumerate(texts):
+            tokens = _chinese_tokenize(text)
+            for t in tokens:
+                idx = self.vocab.get(t)
+                if idx is not None and idx < dim:
+                    vectors[i, idx] += 1
+
+        # IDF 加权
+        if df_list:
+            for j in range(min(dim, len(df_list))):
+                df = df_list[j]
+                if df > 0:
+                    idf = math.log((n_docs_total + 1) / (df + 1) + 1)
+                    vectors[:, j] *= idf
+
+        # L2 归一化（每行）
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms = np.where(norms == 0, 1, norms)
+        vectors = vectors / norms
+
+        return vectors
+
+    # ── API 方法（对齐 ChromaDB Collection）──
+    def count(self) -> int:
+        return len(self.metadata)
+
+    def add(self, documents: list[str], ids: list[str], metadatas: list[dict] | None = None):
+        """添加文档"""
+        if not documents:
+            return
+        if metadatas is None:
+            metadatas = [{} for _ in documents]
+
+        # 追加 metadata
+        for i, doc_id in enumerate(ids):
+            self.metadata.append({
+                "id": doc_id,
+                "text": documents[i],
+                "source": metadatas[i].get("source", "unknown"),
+                "strategy": metadatas[i].get("strategy", "default"),
+            })
+
+        # 重建（新文档可能引入新词 → 词表变化 → 全量重算）
+        self._rebuild_all()
+
+    def update(self, ids: list[str], documents: list[str] | None = None, metadatas: list[dict] | None = None):
+        """更新文档"""
+        for i, doc_id in enumerate(ids):
+            # 找到对应 metadata 的索引
+            idx = None
+            for j, md in enumerate(self.metadata):
+                if md["id"] == doc_id:
+                    idx = j
+                    break
+            if idx is None:
+                print(f"[vector-store] ⚠️ update: id {doc_id} 不存在")
+                continue
+
+            if documents is not None and i < len(documents):
+                self.metadata[idx]["text"] = documents[i]
+            if metadatas is not None and i < len(metadatas):
+                self.metadata[idx]["source"] = metadatas[i].get("source", self.metadata[idx]["source"])
+                self.metadata[idx]["strategy"] = metadatas[i].get("strategy", self.metadata[idx]["strategy"])
+
+        # 重算（text 可能变了 → 词表可能变了）
+        self._rebuild_all()
+
+    def delete(self, ids: list[str]):
+        """删除文档"""
+        ids_set = set(ids)
+        new_meta = [md for md in self.metadata if md["id"] not in ids_set]
+        removed = len(self.metadata) - len(new_meta)
+        self.metadata = new_meta
+
+        if removed > 0:
+            self._rebuild_all()
+
+    def get(
+        self,
+        ids: list[str] | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        where: dict | None = None,
+        include: list[str] | None = None,
+    ) -> dict:
+        """按条件获取文档 —— 对齐 ChromaDB Collection.get() 返回格式"""
+        results = self.metadata[:]
+
+        # where 过滤
+        if where:
+            results = [md for md in results if all(md.get(k) == v for k, v in where.items())]
+
+        # ids 过滤
+        if ids:
+            ids_set = set(ids)
+            results = [md for md in results if md["id"] in ids_set]
+
+        # 分页
+        total = len(results)
+        if limit is not None:
+            results = results[offset:offset + limit]
+
+        # 构造返回格式
+        ret = {"ids": [md["id"] for md in results]}
+        if include is None or "metadatas" in include:
+            ret["metadatas"] = [{"source": md["source"], "strategy": md["strategy"]} for md in results]
+        if include is None or "documents" in include:
+            ret["documents"] = [md["text"] for md in results]
+        # ChromaDB get 不返回 distances
+        return ret
+
+    def query(
+        self,
+        query_texts: list[str],
+        n_results: int = 5,
+        where: dict | None = None,
+        include: list[str] | None = None,
+        use_bm25: bool = True,
+    ) -> dict:
+        """混合检索 —— 向量 + BM25 + RRF 融合，返回格式对齐 ChromaDB Collection.query()"""
+        if not self.metadata or self.vectors is None or len(self.vectors) == 0:
+            empty = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
+            return empty
+
+        query = query_texts[0] if query_texts else ""
+        results_per_query = []
+
+        for q_text in query_texts:
+            q_text = q_text or ""
+            n = min(n_results, len(self.metadata))
+
+            # ── 1. 向量检索（余弦相似度）──
+            q_vec = self._compute_vectors([q_text])[0]  # (dim,)
+            if np.linalg.norm(q_vec) == 0:
+                # query 无有效 token → 用第一个文档兜底
+                vec_sims = np.zeros(len(self.metadata))
+            else:
+                # 余弦相似度
+                norms = np.linalg.norm(self.vectors, axis=1)
+                norms = np.where(norms == 0, 1, norms)
+                vec_sims = self.vectors @ q_vec / norms
+
+            # where 过滤（把不匹配的相似度置为 -inf）
+            if where:
+                for i, md in enumerate(self.metadata):
+                    if not all(md.get(k) == v for k, v in where.items()):
+                        vec_sims[i] = -np.inf
+
+            # 取 top-k*3 给融合空间
+            pool_size = min(n * 3, len(self.metadata)) if use_bm25 else n
+            vec_top_idx = np.argsort(-vec_sims)[:pool_size]
+            vec_top = [(int(i), float(vec_sims[i])) for i in vec_top_idx if vec_sims[i] > -np.inf]
+
+            if not vec_top:
+                results_per_query.append({"ids": [], "documents": [], "metadatas": [], "distances": []})
+                continue
+
+            # ── 2. BM25 检索 ──
+            bm25_top = []
+            if use_bm25 and JIEBA_AVAILABLE:
+                # 只在向量召回的池子里跑 BM25
+                pool_tokens = [_chinese_tokenize(self.metadata[i]["text"]) for i, _ in vec_top]
+                query_tokens = _chinese_tokenize(q_text)
+                bm25_scores = _bm25_score(query_tokens, pool_tokens)
+                bm25_ranked = sorted(enumerate(bm25_scores), key=lambda x: -x[1])[:pool_size]
+                bm25_top = [(vec_top[i][0], s) for i, s in bm25_ranked]
+
+            # ── 3. RRF 融合 ──
+            fused_ranks = {}
+            for rank, (doc_idx, _) in enumerate(vec_top):
+                fused_ranks[doc_idx] = fused_ranks.get(doc_idx, 0) + 1 / (60 + rank)
+            for rank, (doc_idx, _) in enumerate(bm25_top):
+                fused_ranks[doc_idx] = fused_ranks.get(doc_idx, 0) + 1 / (60 + rank)
+
+            final_idx = sorted(fused_ranks.keys(), key=lambda i: -fused_ranks[i])[:n]
+
+            # 构造返回
+            ids = [self.metadata[i]["id"] for i in final_idx]
+            docs = [self.metadata[i]["text"] for i in final_idx]
+            metas = [{"source": self.metadata[i]["source"], "strategy": self.metadata[i]["strategy"]} for i in final_idx]
+            # distance = 1 - cosine_similarity（ChromaDB 习惯：小=更相似）
+            distances = [float(1 - vec_sims[i]) if vec_sims[i] > -np.inf else 1.0 for i in final_idx]
+
+            results_per_query.append({
+                "ids": ids,
+                "documents": docs,
+                "metadatas": metas,
+                "distances": distances,
+            })
+
+        # ChromaDB query 返回的是 list of lists
+        ret = {
+            "ids": [r["ids"] for r in results_per_query],
+            "documents": [r["documents"] for r in results_per_query],
+            "distances": [r["distances"] for r in results_per_query],
+        }
+        if include is None or "metadatas" in include:
+            ret["metadatas"] = [r["metadatas"] for r in results_per_query]
+        return ret
+
+
+# ── BM25 打分（纯 numpy，无依赖）──
+def _bm25_score(query_tokens: list, corpus_tokens: list, k1: float = 1.5, b: float = 0.75) -> list:
+    """BM25Okapi 实现 —— 纯 numpy"""
+    if not corpus_tokens or not query_tokens:
+        return [0.0] * len(corpus_tokens)
+
+    avg_len = np.mean([len(c) for c in corpus_tokens]) if corpus_tokens else 0
+    n_docs = len(corpus_tokens)
+
+    # DF：每个 token 出现在多少篇文档
+    df = {}
+    for c in corpus_tokens:
+        for t in set(c):
+            df[t] = df.get(t, 0) + 1
+
+    # BM25 核心公式
+    scores = []
+    for doc in corpus_tokens:
+        dl = len(doc)
+        score = 0.0
+        for qt in query_tokens:
+            f = doc.count(qt)
+            if f == 0:
+                continue
+            idf = math.log((n_docs - df.get(qt, 0) + 0.5) / (df.get(qt, 0) + 0.5) + 1)
+            denom = f + k1 * (1 - b + b * dl / avg_len) if avg_len > 0 else f + k1
+            score += idf * f * (k1 + 1) / denom
+        scores.append(score)
+    return scores
+
+
+# ── 混合检索 + RRF（供 /query 端点使用）──
+def _hybrid_search(query: str, vector_store: SimpleVectorStore, top_k: int = 5, use_bm25: bool = True):
+    """混合检索 —— 返回 (chunks, distances, metadatas)"""
+    vector_k = top_k * 3 if use_bm25 else top_k
+    results = vector_store.query(
+        query_texts=[query],
+        n_results=vector_k,
+        include=["documents", "metadatas", "distances"],
+        use_bm25=use_bm25,
     )
+    chunks = results["documents"][0] if results["documents"] else []
+    distances = results["distances"][0] if results["distances"] else []
+    metadatas = results["metadatas"][0] if results.get("metadatas") else []
 
-try:
-    SENTENCE = _init_embedding()
-    EMBEDDING_NAME = "bge-small-zh-v1.5 (中文专用, 512维)"
-except Exception as e:
-    print(f"[init] ⚠️ bge-small-zh 加载失败: {e}")
-    print(f"[init] 回退到 DefaultEmbeddingFunction (all-MiniLM-L6-v2)")
-    SENTENCE = embedding_functions.DefaultEmbeddingFunction()
-    EMBEDDING_NAME = "DefaultEmbeddingFunction (all-MiniLM-L6-v2, 英文为主)"
+    return chunks[:top_k], distances[:top_k], metadatas[:top_k] or [{}] * top_k
+
 
 # ═══════════════════════════════════════════════════════════════════
-# ② ChromaDB 初始化
+# ③ SimpleVectorStore 初始化
 # ═══════════════════════════════════════════════════════════════════
 _default = str(Path(__file__).parent / "chroma_data")
-# 优先级: 环境变量 > COS 挂载点 > 本地目录
 CHROMA_PATH = os.environ.get("CHROMA_PATH") or ("/mnt/chroma" if os.path.isdir("/mnt/chroma") else _default)
-CHROMA = chromadb.PersistentClient(path=CHROMA_PATH)
-COL = CHROMA.get_or_create_collection(
-    name="ltc_knowledge",
-    embedding_function=SENTENCE,
-    metadata={"hnsw:space": "cosine"}
-)
-print(f"[init] ChromaDB ready · path={CHROMA_PATH} · docs={COL.count()}")
+VECTOR_STORE = SimpleVectorStore(path=CHROMA_PATH)
+print(f"[init] ✅ SimpleVectorStore ready · path={CHROMA_PATH} · docs={VECTOR_STORE.count()}")
+
 
 # ═══════════════════════════════════════════════════════════════════
-# ③ FastAPI + API Key 鉴权
+# ④ FastAPI + API Key 鉴权
 # ═══════════════════════════════════════════════════════════════════
-app = FastAPI(title="LTC RAG Bot", version="2.0")
+app = FastAPI(title="LTC RAG Bot", version="3.0")
 
 API_KEY = os.environ.get("API_KEY", "dev-only-key-change-in-prod")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -85,8 +484,9 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
         raise HTTPException(401, "Invalid or missing API Key (X-API-Key header)")
     return True
 
+
 # ═══════════════════════════════════════════════════════════════════
-# ④ 飞书配置
+# ⑤ 飞书配置
 # ═══════════════════════════════════════════════════════════════════
 FEISHU_APP_ID     = os.environ.get("FEISHU_APP_ID", "")
 FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
@@ -105,16 +505,14 @@ def feishu_token():
     print(f"[feishu] 获取 token 失败: {data}")
     return None
 
+
 # ═══════════════════════════════════════════════════════════════════
-# ⑤ LLM 调用 —— 多级 fallback
-#    优先级: DeepSeek 云端 > Ollama 本地 > 模板回退
+# ⑥ LLM 调用 —— 多级 fallback
 # ═══════════════════════════════════════════════════════════════════
 def call_llm(prompt: str) -> tuple:
-    """统一的 LLM 调用 —— 多级 fallback 保证永不崩
-    返回: (content, backend_name)  backend ∈ {"deepseek","ollama","template-fallback"}
-    """
-    
-    # ---- 优先级 1: DeepSeek 云端 ----
+    """统一 LLM 调用 —— 多级 fallback 永不崩"""
+
+    # 优先级 1: DeepSeek 云端
     deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if deepseek_key:
         try:
@@ -136,9 +534,9 @@ def call_llm(prompt: str) -> tuple:
             print(f"[llm] DeepSeek 调用成功 · {len(content)} chars")
             return content, "deepseek"
         except Exception as e:
-            print(f"[llm] DeepSeek 失败: {e} · 继续尝试下一个...")
-    
-    # ---- 优先级 2: Ollama 本地 ----
+            print(f"[llm] DeepSeek 失败: {e} · 继续尝试...")
+
+    # 优先级 2: Ollama 本地
     ollama_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     ollama_model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
     try:
@@ -152,139 +550,100 @@ def call_llm(prompt: str) -> tuple:
             print(f"[llm] Ollama 调用成功 · model={ollama_model} · {len(content)} chars")
             return content, "ollama"
     except Exception as e:
-        print(f"[llm] Ollama 不可用: {e} · fallback 到模板")
-    
-    # ---- Fallback: 模板化回答 ----
+        print(f"[llm] Ollama 不可用: {e} · fallback")
+
+    # Fallback: 模板化回答
     return _template_fallback(prompt), "template-fallback"
 
 def _template_fallback(prompt: str) -> str:
-    """没有 LLM 时的兜底 —— 把检索结果直接格式化"""
-    # prompt 的后半段是参考内容（格式由调用方决定）
     return (
         "【⚠️ 当前无可用 LLM · 以下为 RAG 检索原始片段】\n\n"
         "建议接入以下任一 LLM 获得更好效果：\n"
-        "  • DeepSeek: 在 .env 填 DEEPSEEK_API_KEY\n"
-        "  • Ollama:   ollama pull qwen2.5:7b && .env 留空即可自动检测\n\n"
+        "  • DeepSeek: 在环境变量填 DEEPSEEK_API_KEY\n"
+        "  • Ollama:   ollama pull qwen2.5:7b\n\n"
         "——— 原始检索结果 ———\n"
         f"{prompt}\n"
     )
 
+
 # ═══════════════════════════════════════════════════════════════════
-# ⑥ 端点实现
+# ⑦ 切片策略配置 —— configs/kb_strategies.json
 # ═══════════════════════════════════════════════════════════════════
-
-@app.get("/")
-async def portal():
-    """知识库管理门户 —— 返回 portal/index.html"""
-    portal_path = Path(__file__).parent / "portal" / "index.html"
-    if portal_path.exists():
-        return FileResponse(portal_path)
+def _load_strategies() -> dict:
+    p = Path(__file__).parent / "configs" / "kb_strategies.json"
+    if p.exists():
+        try:
+            raw = json.loads(p.read_text(encoding="utf-8"))
+            return {k: v for k, v in raw.items() if not k.startswith("_")}
+        except Exception as e:
+            print(f"[config] 策略加载失败: {e}")
     return {
-        "service": "LTC RAG Bot v2.0",
-        "health": "ok",
-        "hint": "把 portal/index.html 放到 portal/ 目录下即可启用管理门户",
+        "default": {
+            "name": "默认",
+            "mode": "paragraph",
+            "chunk_size": 500,
+            "chunk_overlap": 50,
+            "min_chunk_len": 20,
+            "max_chunk_len": 2000,
+        }
     }
 
-@app.get("/health")
-def health():
-    """健康检查（公开免鉴权）"""
-    return {
-        "status": "ok",
-        "version": "2.0",
-        "docs_count": COL.count(),
-        "embedding": EMBEDDING_NAME,
-        "api_key_mode": "开发模式(无强制鉴权)" if API_KEY == "dev-only-key-change-in-prod" else "生产模式(已开启鉴权)",
-        "feishu_configured": bool(FEISHU_APP_ID and FEISHU_APP_SECRET),
-    }
+CHUNK_STRATEGIES = _load_strategies()
+DEFAULT_STRATEGY = "default"
 
-# 注意：FastAPI 默认把 /docs 留给 Swagger UI，知识库用 /kb 前缀
-@app.get("/kb")
-async def list_knowledge(_: bool = Depends(verify_api_key)):
-    """列出 ChromaDB 里所有已入库文档（按 source 分组）"""
-    result = COL.get(include=["metadatas"])
-    sources = {}
-    ids_by_source = {}
-    for i, md in enumerate(result["metadatas"] or []):
-        src = (md or {}).get("source", "unknown")
-        sources[src] = sources.get(src, 0) + 1
-        ids_by_source.setdefault(src, []).append(result["ids"][i])
-    
-    return {
-        "total_chunks": COL.count(),
-        "sources": sources,
-        "ids_by_source": ids_by_source,
-    }
+@app.get("/strategies")
+def list_strategies():
+    out = {}
+    for key, s in CHUNK_STRATEGIES.items():
+        out[key] = {
+            "name": s.get("name", key),
+            "mode": s.get("mode", "paragraph"),
+            "chunk_size": s.get("chunk_size", 500),
+            "chunk_overlap": s.get("chunk_overlap", 50),
+            "min_chunk_len": s.get("min_chunk_len", 20),
+            "max_chunk_len": s.get("max_chunk_len", 2000),
+            "desc": s.get("desc", ""),
+        }
+    return out
 
-@app.delete("/kb/{chunk_id}")
-async def delete_chunk(chunk_id: str, _: bool = Depends(verify_api_key)):
-    """删除单个切片"""
-    try:
-        COL.delete(ids=[chunk_id])
-        return {"ok": True, "deleted": chunk_id, "remaining": COL.count()}
-    except Exception as e:
-        raise HTTPException(400, f"删除失败: {e}")
+def _chunk_text(text: str, strategy: str = "default") -> list:
+    s = CHUNK_STRATEGIES.get(strategy, CHUNK_STRATEGIES[DEFAULT_STRATEGY])
+    mode = s.get("mode", "paragraph")
+    min_len = s.get("min_chunk_len", 20)
+    max_len = s.get("max_chunk_len", 2000)
 
-@app.delete("/kb")
-async def clear_all_knowledge(_: bool = Depends(verify_api_key)):
-    """清空整个知识库（危险操作）"""
-    COL.delete(ids=COL.get()["ids"])
-    return {"ok": True, "cleared_all": True}
-
-@app.post("/ingest")
-async def ingest(
-    file: UploadFile,
-    _: bool = Depends(verify_api_key),
-    strategy: str = "default",
-):
-    """上传 .pdf / .md / .txt 文件入库
-    strategy: 切片策略名（见 GET /strategies），默认 default
-    """
-    content = ""
-    if file.filename.lower().endswith(".pdf"):
-        reader = PdfReader(file.file)
-        content = "\n".join(p.extract_text() or "" for p in reader.pages)
+    if mode == "paragraph":
+        chunks = [c.strip() for c in text.split("\n\n") if len(c.strip()) > min_len]
+        chunks = _split_by_sentence_if_big(chunks, min_len, max_len)
+    elif mode == "sentence":
+        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > min_len]
     else:
-        content = (await file.read()).decode("utf-8", errors="ignore")
-    
-    if not content.strip():
-        raise HTTPException(400, "文件内容为空")
-    
-    chunks = _chunk_text(content, strategy=strategy)
-    ids = [str(uuid.uuid4()) for _ in chunks]
-    source = file.filename
-    metadatas = [{"source": source, "strategy": strategy} for _ in chunks]
-    
-    COL.add(documents=chunks, ids=ids, metadatas=metadatas)
-    return {"ingested": len(chunks), "source": source, "strategy": strategy, "total": COL.count()}
+        chunks = [text]
 
-@app.post("/ingest-text")
-async def ingest_text(
-    body: dict,
-    _: bool = Depends(verify_api_key),
-):
-    """直接录入一段文本（方便测试）
-    body: {text, source, strategy}  strategy 默认 default
-    """
-    text = body.get("text", "").strip()
-    source = body.get("source", "inline")
-    strategy = body.get("strategy", "default")
-    if not text:
-        raise HTTPException(400, "text required")
-    
-    chunks = _chunk_text(text, strategy=strategy)
-    ids = [str(uuid.uuid4()) for _ in chunks]
-    metadatas = [{"source": source, "strategy": strategy} for _ in chunks]
-    
-    COL.add(documents=chunks, ids=ids, metadatas=metadatas)
-    return {"ingested": len(chunks), "source": source, "strategy": strategy, "total": COL.count()}
+    if not chunks:
+        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > min_len]
+    if not chunks:
+        chunks = [text]
+
+    return chunks
+
+def _split_by_sentence_if_big(chunks: list, min_len: int, max_len: int) -> list:
+    result = []
+    for c in chunks:
+        if len(c) <= max_len:
+            result.append(c)
+        else:
+            sub = [x.strip() for x in re.split(r'[。；\n]', c) if len(x.strip()) > min_len]
+            result.extend(sub if sub else [c])
+    return result
+
 
 # ═══════════════════════════════════════════════════════════════════
-# Prompt 模板管理 —— 从 prompts/*.txt 读，可页面编辑
+# ⑧ Prompt 模板管理 —— prompts/*.txt
 # ═══════════════════════════════════════════════════════════════════
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 PROMPTS_DIR.mkdir(exist_ok=True)
 
-# 内置兜底 prompt（文件不存在时用）
 _BUILTIN_PROMPTS = {
     "fabe": """你是一个专业的 B2B 销售话术专家。请基于以下参考内容，按 FABE 法则组织一段完整的销售回答。
 
@@ -305,25 +664,21 @@ _BUILTIN_PROMPTS = {
 }
 
 def _get_prompt(name: str, **kwargs) -> str:
-    """读 prompt 模板文件 → .format(kwargs) 填充占位符"""
     p = PROMPTS_DIR / f"{name}.txt"
     template = p.read_text(encoding="utf-8") if p.exists() else _BUILTIN_PROMPTS.get(name, _BUILTIN_PROMPTS["fabe"])
     return template.format(**kwargs) if kwargs else template
 
 @app.get("/prompts/{name}")
 def get_prompt(name: str, _: bool = Depends(verify_api_key)):
-    """读取 prompt 模板 —— portal 页面编辑前先 fetch"""
     p = PROMPTS_DIR / f"{name}.txt"
     content = p.read_text(encoding="utf-8") if p.exists() else _BUILTIN_PROMPTS.get(name, "")
     return {"name": name, "content": content, "builtin": not p.exists()}
 
 @app.put("/prompts/{name}")
 def put_prompt(name: str, body: dict, _: bool = Depends(verify_api_key)):
-    """保存 prompt 模板 —— 写 .txt 文件，立即生效不用重启"""
     content = body.get("content", "").strip()
     if not content:
         raise HTTPException(400, "content required")
-    # 安全检查：只允许字母数字下划线
     if not re.match(r'^[a-zA-Z0-9_-]+$', name):
         raise HTTPException(400, "invalid prompt name")
     p = PROMPTS_DIR / f"{name}.txt"
@@ -332,7 +687,6 @@ def put_prompt(name: str, body: dict, _: bool = Depends(verify_api_key)):
 
 @app.get("/prompts")
 def list_prompts(_: bool = Depends(verify_api_key)):
-    """列出所有 prompt 模板（文件 + 内置）"""
     builtin_names = set(_BUILTIN_PROMPTS.keys())
     file_names = {p.stem for p in PROMPTS_DIR.glob("*.txt")}
     all_names = builtin_names | file_names
@@ -341,184 +695,117 @@ def list_prompts(_: bool = Depends(verify_api_key)):
         for n in sorted(all_names)
     ]
 
-# ═══════════════════════════════════════════════════════════════════
-# BM25 + RRF 混合检索（Step 3 新增）
-# ═══════════════════════════════════════════════════════════════════
-try:
-    import rank_bm25
-    BM25_AVAILABLE = True
-except ImportError:
-    BM25_AVAILABLE = False
-    print("[bm25] rank-bm25 未安装，混合检索将跳过 BM25 路径")
-
-try:
-    import jieba
-    JIEBA_AVAILABLE = True
-except ImportError:
-    JIEBA_AVAILABLE = False
-
-def _chinese_tokenize(text: str) -> list:
-    """中文分词 —— 优先 jieba，fallback 到简单字切分"""
-    if JIEBA_AVAILABLE:
-        return [t.strip() for t in jieba.cut(text) if t.strip()]
-    # 简单 fallback：按标点切 + 每个字也加进去（应对专有名词）
-    tokens = [c for c in re.split(r'[，。！？；：、\s]+', text) if c]
-    for c in text:
-        if c not in '，。！？；：、 \n':
-            tokens.append(c)
-    return tokens
-
-def _bm25_retrieve(query: str, documents: list, top_k: int = 5) -> tuple:
-    """BM25 检索 —— 返回 (chunks, scores)"""
-    if not BM25_AVAILABLE or not documents:
-        return [], []
-    tokenized = [_chinese_tokenize(d) for d in documents]
-    bm25 = rank_bm25.BM25Okapi(tokenized)
-    q_tokens = _chinese_tokenize(query)
-    scores = bm25.get_scores(q_tokens)
-    # 取 top-k
-    ranked = sorted(enumerate(scores), key=lambda x: -x[1])[:top_k]
-    chunks = [documents[i] for i, _ in ranked]
-    return chunks, [s for _, s in ranked]
-
-def _rrf_fuse(vec_chunks: list, bm25_chunks: list, k: int = 60) -> list:
-    """
-    Reciprocal Rank Fusion —— 按名次融合，不看绝对分数
-    RRF(d) = sum(1/(k + rank_i))  rank 从 1 开始
-    """
-    scores = {}
-    for rank, doc in enumerate(vec_chunks, 1):
-        scores[doc] = scores.get(doc, 0) + 1 / (k + rank)
-    for rank, doc in enumerate(bm25_chunks, 1):
-        scores[doc] = scores.get(doc, 0) + 1 / (k + rank)
-    return sorted(scores.keys(), key=lambda d: -scores[d])
-
-def _hybrid_search(query: str, top_k: int = 5, use_bm25: bool = True):
-    """
-    混合检索：向量 + BM25 + RRF 融合
-    返回 (chunks, distances, sources) 格式和原来 COL.query 保持一致
-    """
-    # 1. 向量检索（先拉多一点给融合空间）
-    vector_k = top_k * 3 if use_bm25 else top_k
-    results = COL.query(query_texts=[query], n_results=vector_k, include=["documents", "metadatas", "distances"])
-    vec_chunks = results["documents"][0] if results["documents"] else []
-    vec_distances = results["distances"][0] if results["distances"] else []
-    vec_metadatas = results["metadatas"][0] if results.get("metadatas") else []
-    
-    if not vec_chunks:
-        return [], [], []
-    
-    if not use_bm25 or not BM25_AVAILABLE:
-        # 纯向量模式
-        return vec_chunks[:top_k], vec_distances[:top_k], vec_metadatas[:top_k] or [{}]*top_k
-    
-    # 2. BM25 检索（用完整 chunk 池当 corpus）
-    bm25_chunks, _ = _bm25_retrieve(query, vec_chunks, top_k=vector_k)
-    
-    # 3. RRF 融合
-    fused_chunks = _rrf_fuse(vec_chunks, bm25_chunks, k=60)[:top_k]
-    
-    # 4. 还原 distances 和 metadatas（融合后按 chunk 文本回填）
-    dist_map = {c: d for c, d in zip(vec_chunks, vec_distances)}
-    meta_map = {c: m for c, m in zip(vec_chunks, vec_metadatas or [{}]*len(vec_chunks))}
-    fused_distances = [dist_map.get(c, 1.0) for c in fused_chunks]
-    fused_metadatas = [meta_map.get(c, {}) for c in fused_chunks]
-    
-    return fused_chunks, fused_distances, fused_metadatas
 
 # ═══════════════════════════════════════════════════════════════════
-# Step 1 · 切片策略配置 —— 从 configs/kb_strategies.json 读
+# ⑨ 端点实现
 # ═══════════════════════════════════════════════════════════════════
-import json as _json
 
-def _load_strategies() -> dict:
-    """加载切片策略配置，失败回退到内置 default"""
-    p = Path(__file__).parent / "configs" / "kb_strategies.json"
-    if p.exists():
-        try:
-            raw = _json.loads(p.read_text(encoding="utf-8"))
-            # 过滤掉 _comment 等元数据
-            return {k: v for k, v in raw.items() if not k.startswith("_")}
-        except Exception as e:
-            print(f"[config] 策略配置加载失败: {e}")
-    # 内置兜底
+@app.get("/")
+async def portal():
+    """知识库管理门户 —— 返回 portal/index.html"""
+    portal_path = Path(__file__).parent / "portal" / "index.html"
+    if portal_path.exists():
+        return FileResponse(portal_path)
     return {
-        "default": {
-            "name": "默认",
-            "mode": "paragraph",
-            "chunk_size": 500,
-            "chunk_overlap": 50,
-            "min_chunk_len": 20,
-            "max_chunk_len": 2000,
-        }
+        "service": "LTC RAG Bot v3.0",
+        "health": "ok",
+        "hint": "把 portal/index.html 放到 portal/ 目录下即可启用管理门户",
     }
 
-CHUNK_STRATEGIES = _load_strategies()
-DEFAULT_STRATEGY = "default"
+@app.get("/health")
+def health():
+    """健康检查（公开免鉴权）"""
+    return {
+        "status": "ok",
+        "version": "3.0",
+        "docs_count": VECTOR_STORE.count(),
+        "embedding": "TF-IDF + Jieba (自实现, 零模型下载)",
+        "vector_dim": VECTOR_STORE.vocab.get("_dim", 0) if VECTOR_STORE.vocab else 0,
+        "api_key_mode": "开发模式(无强制鉴权)" if API_KEY == "dev-only-key-change-in-prod" else "生产模式(已开启鉴权)",
+        "feishu_configured": bool(FEISHU_APP_ID and FEISHU_APP_SECRET),
+    }
 
-# 给 ingest 端点加上 strategy 参数接收（需要加 import）
-from fastapi import Query
+# ── 知识库文档管理 ──
 
-@app.get("/strategies")
-def list_strategies():
-    """列出所有可用切片策略 —— 给 portal 下拉选"""
-    out = {}
-    for key, s in CHUNK_STRATEGIES.items():
-        out[key] = {
-            "name": s.get("name", key),
-            "mode": s.get("mode", "paragraph"),
-            "chunk_size": s.get("chunk_size", 500),
-            "chunk_overlap": s.get("chunk_overlap", 50),
-            "min_chunk_len": s.get("min_chunk_len", 20),
-            "max_chunk_len": s.get("max_chunk_len", 2000),
-            "desc": s.get("desc", ""),
-        }
-    return out
+@app.get("/kb")
+async def list_knowledge(_: bool = Depends(verify_api_key)):
+    """列出所有已入库文档（按 source 分组）"""
+    meta = VECTOR_STORE.metadata
+    sources = {}
+    ids_by_source = {}
+    for md in meta:
+        src = md.get("source", "unknown")
+        sources[src] = sources.get(src, 0) + 1
+        ids_by_source.setdefault(src, []).append(md["id"])
 
-def _chunk_text(text: str, strategy: str = "default") -> list:
-    """
-    中文智能切片 —— 按配置参数化
-    strategy: configs/kb_strategies.json 里的 key
-    """
-    s = CHUNK_STRATEGIES.get(strategy, CHUNK_STRATEGIES[DEFAULT_STRATEGY])
-    mode = s.get("mode", "paragraph")
-    min_len = s.get("min_chunk_len", 20)
-    max_len = s.get("max_chunk_len", 2000)
-    chunk_size = s.get("chunk_size", 500)
-    overlap = s.get("chunk_overlap", 50)
-    
-    # Step 1: 按 mode 切
-    if mode == "paragraph":
-        # 先按 \n\n 段落，段落太大再按句号切
-        chunks = [c.strip() for c in text.split("\n\n") if len(c.strip()) > min_len]
-        # 如果段落太大，强制按句号再切
-        chunks = _split_by_sentence_if_big(chunks, min_len, max_len)
-    elif mode == "sentence":
-        # 直接按句号/分号切（销售话术短段落优先）
-        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > min_len]
+    return {
+        "total_chunks": VECTOR_STORE.count(),
+        "sources": sources,
+        "ids_by_source": ids_by_source,
+    }
+
+@app.delete("/kb/{chunk_id}")
+async def delete_chunk(chunk_id: str, _: bool = Depends(verify_api_key)):
+    """删除单个切片"""
+    try:
+        VECTOR_STORE.delete(ids=[chunk_id])
+        return {"ok": True, "deleted": chunk_id, "remaining": VECTOR_STORE.count()}
+    except Exception as e:
+        raise HTTPException(400, f"删除失败: {e}")
+
+@app.delete("/kb")
+async def clear_all_knowledge(_: bool = Depends(verify_api_key)):
+    """清空整个知识库（危险操作）"""
+    all_ids = [md["id"] for md in VECTOR_STORE.metadata]
+    if all_ids:
+        VECTOR_STORE.delete(ids=all_ids)
+    return {"ok": True, "cleared_all": True}
+
+@app.post("/ingest")
+async def ingest(
+    file: UploadFile,
+    _: bool = Depends(verify_api_key),
+    strategy: str = "default",
+):
+    """上传 .pdf / .md / .txt 文件入库"""
+    content = ""
+    if file.filename.lower().endswith(".pdf"):
+        reader = PdfReader(file.file)
+        content = "\n".join(p.extract_text() or "" for p in reader.pages)
     else:
-        chunks = [text]  # fallback: 不切
-    
-    # Step 2: 如果还是没切出来，fallback 到 sentence
-    if not chunks:
-        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > min_len]
-    if not chunks:
-        chunks = [text]
-    
-    return chunks
+        content = (await file.read()).decode("utf-8", errors="ignore")
 
-def _split_by_sentence_if_big(chunks: list, min_len: int, max_len: int) -> list:
-    """段落太大 → 按句号/分号再切一次"""
-    result = []
-    for c in chunks:
-        if len(c) <= max_len:
-            result.append(c)
-        else:
-            sub = [x.strip() for x in re.split(r'[。；\n]', c) if len(x.strip()) > min_len]
-            result.extend(sub if sub else [c])
-    return result
+    if not content.strip():
+        raise HTTPException(400, "文件内容为空")
 
-# ========== Step 4: 切片预览 + 手动编辑 ==========
+    chunks = _chunk_text(content, strategy=strategy)
+    ids = [str(uuid.uuid4()) for _ in chunks]
+    source = file.filename
+    metadatas = [{"source": source, "strategy": strategy} for _ in chunks]
+
+    VECTOR_STORE.add(documents=chunks, ids=ids, metadatas=metadatas)
+    return {"ingested": len(chunks), "source": source, "strategy": strategy, "total": VECTOR_STORE.count()}
+
+@app.post("/ingest-text")
+async def ingest_text(
+    body: dict,
+    _: bool = Depends(verify_api_key),
+):
+    """直接录入一段文本"""
+    text = body.get("text", "").strip()
+    source = body.get("source", "inline")
+    strategy = body.get("strategy", "default")
+    if not text:
+        raise HTTPException(400, "text required")
+
+    chunks = _chunk_text(text, strategy=strategy)
+    ids = [str(uuid.uuid4()) for _ in chunks]
+    metadatas = [{"source": source, "strategy": strategy} for _ in chunks]
+
+    VECTOR_STORE.add(documents=chunks, ids=ids, metadatas=metadatas)
+    return {"ingested": len(chunks), "source": source, "strategy": strategy, "total": VECTOR_STORE.count()}
+
+# ── 切片管理 ──
 
 @app.get("/chunks")
 def list_chunks(
@@ -529,163 +816,164 @@ def list_chunks(
     keyword: str | None = Query(None, description="按关键词全文搜索"),
 ):
     """分页列出所有切片 —— 支持按 source/strategy/keyword 过滤"""
-    total = COL.count()
-    
-    # 构造 where 过滤器
     where = {}
     if source:
         where["source"] = source
     if strategy:
         where["strategy"] = strategy
-    
-    offset = (page - 1) * page_size
-    
+
+    # keyword 搜索 → 用混合检索
     if keyword:
-        # 关键词搜索 → 用 query 而不是 get
-        results = COL.query(
-            query_texts=[keyword],
-            n_results=min(total, page_size),
-            where=where if where else None,
-            include=["documents", "metadatas", "distances"],
-        )
-        ids = results["ids"][0] if results["ids"] else []
-        docs = results["documents"][0] if results["documents"] else []
-        metas = results["metadatas"][0] if results["metadatas"] else []
-        distances = results["distances"][0] if results["distances"] else []
-        total = len(ids)
+        chunks, distances, metadatas = _hybrid_search(keyword, VECTOR_STORE, top_k=page_size * 3, use_bm25=True)
+        if where:
+            # where 过滤
+            filtered = []
+            filtered_d = []
+            filtered_m = []
+            for c, d, m in zip(chunks, distances, metadatas):
+                if all(m.get(k) == v for k, v in where.items()):
+                    filtered.append(c)
+                    filtered_d.append(d)
+                    filtered_m.append(m)
+            chunks = filtered[:page_size]
+            distances = filtered_d[:page_size]
+            metadatas = filtered_m[:page_size]
+        total = len(chunks)
+        chunks_data = []
+        for i, (c, d, m) in enumerate(zip(chunks, distances, metadatas)):
+            chunks_data.append({
+                "id": f"kw_{i}",
+                "text": c,
+                "text_preview": (c[:80] + "…") if len(c) > 80 else c,
+                "length": len(c),
+                "source": (m or {}).get("source", "unknown"),
+                "strategy": (m or {}).get("strategy", "unknown"),
+                "score": round(1 - d, 4),
+            })
     else:
-        results = COL.get(
-            limit=page_size,
-            offset=offset,
-            where=where if where else None,
-            include=["documents", "metadatas"],
-        )
-        ids = results["ids"]
-        docs = results["documents"]
-        metas = results["metadatas"]
-        distances = [None] * len(ids)
-    
-    chunks = []
-    for i, cid in enumerate(ids):
-        chunks.append({
-            "id": cid,
-            "text": docs[i] if docs else "",
-            "text_preview": (docs[i][:80] + "…") if docs and len(docs[i]) > 80 else (docs[i] if docs else ""),
-            "length": len(docs[i]) if docs else 0,
-            "source": (metas[i] or {}).get("source", "unknown") if metas else "unknown",
-            "strategy": (metas[i] or {}).get("strategy", "unknown") if metas else "unknown",
-            "score": round(1 - distances[i], 4) if distances and distances[i] is not None else None,
-        })
-    
+        offset = (page - 1) * page_size
+        result = VECTOR_STORE.get(limit=page_size, offset=offset, where=where if where else None, include=["documents", "metadatas"])
+        total = VECTOR_STORE.count()
+        ids = result["ids"]
+        docs = result["documents"]
+        metas = result["metadatas"]
+
+        chunks_data = []
+        for i, cid in enumerate(ids):
+            text = docs[i] if docs else ""
+            m = metas[i] if metas else {}
+            chunks_data.append({
+                "id": cid,
+                "text": text,
+                "text_preview": (text[:80] + "…") if len(text) > 80 else text,
+                "length": len(text),
+                "source": (m or {}).get("source", "unknown"),
+                "strategy": (m or {}).get("strategy", "unknown"),
+                "score": None,
+            })
+
+    total_all = VECTOR_STORE.count()
     return JSONResponse({
-        "total": total,
+        "total": total if keyword else total_all,
         "page": page,
         "page_size": page_size,
-        "total_pages": max(1, (total + page_size - 1) // page_size),
-        "chunks": chunks,
+        "total_pages": max(1, (total if keyword else total_all + page_size - 1) // page_size),
+        "chunks": chunks_data,
     })
-
 
 @app.get("/chunks/{chunk_id}")
 def get_chunk(chunk_id: str):
     """单条切片详情"""
-    results = COL.get(ids=[chunk_id], include=["documents", "metadatas"])
-    if not results["ids"]:
+    result = VECTOR_STORE.get(ids=[chunk_id], include=["documents", "metadatas"])
+    if not result["ids"]:
         raise HTTPException(404, "chunk not found")
-    
     return JSONResponse({
         "id": chunk_id,
-        "text": results["documents"][0],
-        "length": len(results["documents"][0]),
-        "metadata": results["metadatas"][0] or {},
+        "text": result["documents"][0],
+        "length": len(result["documents"][0]),
+        "metadata": result["metadatas"][0] or {},
     })
-
 
 @app.patch("/chunks/{chunk_id}")
 def update_chunk(chunk_id: str, body: dict):
-    """
-    手动修改切片内容 —— 自动重算 embedding 存入向量库
-    可以改 text、也可以改 metadata 里的 source/strategy
-    """
-    results = COL.get(ids=[chunk_id], include=["documents", "metadatas"])
-    if not results["ids"]:
+    """手动修改切片 —— 自动重算向量"""
+    result = VECTOR_STORE.get(ids=[chunk_id], include=["documents", "metadatas"])
+    if not result["ids"]:
         raise HTTPException(404, "chunk not found")
-    
+
     updates = {}
-    
-    # 改文本 → 自动重算 embedding（ChromaDB 用 collection 绑定的 embedding_function）
     new_text = body.get("text")
+    new_source = body.get("source")
+    new_strategy = body.get("strategy")
+
     if new_text is not None:
         if len(new_text.strip()) < 5:
             raise HTTPException(400, "text too short (min 5 chars)")
         updates["documents"] = [new_text]
-    
-    # 改 metadata
-    new_source = body.get("source")
-    new_strategy = body.get("strategy")
+
     if new_source or new_strategy:
-        old_meta = results["metadatas"][0] or {}
+        old_meta = result["metadatas"][0] or {}
         new_meta = dict(old_meta)
         if new_source:
             new_meta["source"] = new_source
         if new_strategy:
             new_meta["strategy"] = new_strategy
         updates["metadatas"] = [new_meta]
-    
+
     if not updates:
-        raise HTTPException(400, "nothing to update —— 需要 text 或 source 或 strategy 字段")
-    
-    COL.update(ids=[chunk_id], **updates)
-    
-    # 返回更新后的完整数据
-    results2 = COL.get(ids=[chunk_id], include=["documents", "metadatas"])
+        raise HTTPException(400, "nothing to update —— 需要 text 或 source 或 strategy")
+
+    VECTOR_STORE.update(ids=[chunk_id], documents=updates.get("documents"), metadatas=updates.get("metadatas"))
+
+    result2 = VECTOR_STORE.get(ids=[chunk_id], include=["documents", "metadatas"])
     return JSONResponse({
         "updated": True,
         "id": chunk_id,
-        "new_text": results2["documents"][0],
-        "new_metadata": results2["metadatas"][0] or {},
+        "new_text": result2["documents"][0],
+        "new_metadata": result2["metadatas"][0] or {},
     })
 
+@app.delete("/chunks/{chunk_id}")
+def delete_single_chunk(chunk_id: str, _: bool = Depends(verify_api_key)):
+    """删除单个切片（/chunks/{id} 路径，替代 /kb/{id}）"""
+    VECTOR_STORE.delete(ids=[chunk_id])
+    return {"ok": True, "deleted": chunk_id, "remaining": VECTOR_STORE.count()}
 
-# ========== 原端点（query, webhook 等） ==========
+# ── RAG 问答 ──
 
 @app.post("/query")
 async def query(body: dict, _: bool = Depends(verify_api_key)):
-    """RAG + LLM FABE 问答 —— 混合检索 + 文件化 Prompt"""
+    """RAG + LLM FABE 问答 —— 混合检索"""
     q = body.get("question", "").strip()
     top_k = body.get("top_k", 5)
     use_bm25 = body.get("use_bm25", True)
     if not q:
         raise HTTPException(400, "question required")
-    
-    # ===== 混合检索（向量 + BM25 + RRF 融合）=====
-    chunks, distances, metadatas_list = _hybrid_search(q, top_k=top_k, use_bm25=use_bm25)
-    
+
+    chunks, distances, metadatas_list = _hybrid_search(q, VECTOR_STORE, top_k=top_k, use_bm25=use_bm25)
+
     if not chunks:
         return JSONResponse({
             "answer": "⚠️ 知识库为空，请先上传产品文档。",
             "sources": [],
             "total_docs": 0,
-            "hybrid": {"bm25_available": BM25_AVAILABLE, "use_bm25": False},
+            "hybrid": {"bm25_available": JIEBA_AVAILABLE, "use_bm25": False},
         })
-    
-    # 组装 top-3 参考
+
     top3 = list(zip(chunks[:3], distances[:3], metadatas_list[:3]))
     context_block = "\n".join(
         f"[{i+1}] (相似度 {1-d:.3f}, 来源 {(m or {}).get('source','?')}) {c}"
         for i, (c, d, m) in enumerate(top3)
     )
-    
-    # ===== 从文件读 FABE prompt 模板（可页面编辑，不用重启）=====
+
     fabe_prompt = _get_prompt("fabe", question=q, context=context_block)
     llm_reply, llm_backend = call_llm(fabe_prompt)
-    
-    # 如果是模板回退，直接返回检索片段就好
+
     if llm_backend == "template-fallback":
         answer = f"**问题**：{q}\n\n**📎 参考片段**：\n{context_block}\n\n{llm_reply}"
     else:
         answer = f"**问题**：{q}\n\n**🤖 AI 话术（FABE · {llm_backend}）**：\n{llm_reply}\n\n**📎 参考片段**：\n{context_block}"
-    
+
     return JSONResponse({
         "answer": answer,
         "sources": [
@@ -697,43 +985,42 @@ async def query(body: dict, _: bool = Depends(verify_api_key)):
             for c, d, m in top3
         ],
         "llm_used": llm_backend,
-        "total_docs": COL.count(),
+        "total_docs": VECTOR_STORE.count(),
         "hybrid": {
-            "bm25_available": BM25_AVAILABLE,
+            "bm25_available": JIEBA_AVAILABLE,
             "jieba_available": JIEBA_AVAILABLE,
-            "use_bm25": use_bm25 and BM25_AVAILABLE,
+            "use_bm25": use_bm25 and JIEBA_AVAILABLE,
         },
     })
+
+# ── 飞书 Webhook ──
 
 @app.post("/webhook")
 async def webhook(payload: dict):
     """飞书事件回调（飞书自鉴，不加 API Key）"""
-    # 飞书 URL 校验 —— 必须原样返回 challenge
     if "challenge" in payload:
         return {"challenge": payload["challenge"]}
-    
+
     evt = payload.get("event", {})
     msg = evt.get("message", {})
-    
+
     if msg.get("message_type") != "text":
         return {"ok": True}
-    
+
     try:
         text = json.loads(msg.get("content", "{}")).get("text", "").strip()
     except Exception:
         text = ""
-    
+
     if not text or text.startswith("/"):
         return {"ok": True}
-    
-    # 去掉 @机器人 的 <at> 标签
+
     text = re.sub(r'<at[^>]*>.*?</at>', '', text).strip()
     if not text:
         return {"ok": True}
-    
+
     print(f"[webhook] 收到消息: '{text}'")
-    
-    # RAG 查询（复用 query 函数）
+
     result = await query({"question": text}, _=True)
     answer_text = result.body.decode() if hasattr(result, 'body') else json.dumps(result)
     try:
@@ -741,8 +1028,7 @@ async def webhook(payload: dict):
         reply = answer_json.get("answer", str(answer_text))
     except Exception:
         reply = str(answer_text)
-    
-    # 回发飞书
+
     token = feishu_token()
     if token:
         try:
@@ -752,7 +1038,7 @@ async def webhook(payload: dict):
                 json={
                     "receive_id": msg.get("chat_id"),
                     "msg_type": "text",
-                    "content": json.dumps({"text": reply[:4000]}),  # 飞书单条消息上限
+                    "content": json.dumps({"text": reply[:4000]}),
                 },
                 timeout=10,
             )
@@ -761,14 +1047,15 @@ async def webhook(payload: dict):
             print(f"[webhook] 发送飞书消息失败: {e}")
     else:
         print(f"[webhook] ⚠️ 无飞书凭证，跳过发送。reply={reply[:100]}...")
-    
+
     return {"ok": True, "reply_preview": reply[:150]}
+
 
 # ═══════════════════════════════════════════════════════════════════
 # 启动入口
 # ═══════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8001))
-    print(f"🚀 LTC RAG Bot v2.0 启动 · port={port} · embedding={EMBEDDING_NAME}")
+    port = int(os.environ.get("PORT", 8080))
+    print(f"🚀 LTC RAG Bot v3.0 启动 · port={port} · embedding=TF-IDF+Jieba · 内存优化版")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

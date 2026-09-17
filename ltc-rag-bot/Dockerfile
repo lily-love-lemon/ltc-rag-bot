@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════════════════
-# LTC RAG Bot v2.0 · CloudBase 云托管版
-# 国内部署首选，COS 挂载持久化 ChromaDB 数据
-# Embedding: TF-IDF + Jieba（零模型下载，镜像小、构建快）
+# LTC RAG Bot v3.0 · CloudBase 免费版（0.5核 128MB）优化
+# COS 挂载持久化 SimpleVectorStore 数据（numpy .npy + JSON）
+# Embedding: TF-IDF + Jieba（零模型下载，镜像小、启动快）
 # LLM: 外部云端（智谱 / DeepSeek / Ollama）
 # ═══════════════════════════════════════════════════════════════════
 
