@@ -19,7 +19,6 @@ load_dotenv()
 
 import chromadb
 from chromadb.utils import embedding_functions
-from sentence_transformers import SentenceTransformer
 from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 from fastapi.responses import JSONResponse, FileResponse
@@ -59,7 +58,9 @@ except Exception as e:
 # ═══════════════════════════════════════════════════════════════════
 # ② ChromaDB 初始化
 # ═══════════════════════════════════════════════════════════════════
-CHROMA_PATH = os.environ.get("CHROMA_PATH", str(Path(__file__).parent / "chroma_data"))
+_default = str(Path(__file__).parent / "chroma_data")
+# 优先级: 环境变量 > COS 挂载点 > 本地目录
+CHROMA_PATH = os.environ.get("CHROMA_PATH") or ("/mnt/chroma" if os.path.isdir("/mnt/chroma") else _default)
 CHROMA = chromadb.PersistentClient(path=CHROMA_PATH)
 COL = CHROMA.get_or_create_collection(
     name="ltc_knowledge",

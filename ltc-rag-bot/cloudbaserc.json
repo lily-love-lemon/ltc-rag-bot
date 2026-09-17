@@ -1,0 +1,13 @@
+{
+  "envId": "auto-fill-in-cloudbase-console",
+  "cloudrun": {
+    "serviceName": "ltc-rag-bot",
+    "containerPort": 8080,
+    "minNum": 0,
+    "maxNum": 10,
+    "cpu": 1,
+    "mem": 1,
+    "envParams": {},
+    "customLogs": "stdout"
+  }
+}
