@@ -230,8 +230,14 @@ async def clear_all_knowledge(_: bool = Depends(verify_api_key)):
     return {"ok": True, "cleared_all": True}
 
 @app.post("/ingest")
-async def ingest(file: UploadFile, _: bool = Depends(verify_api_key)):
-    """上传 .pdf / .md / .txt 文件入库"""
+async def ingest(
+    file: UploadFile,
+    _: bool = Depends(verify_api_key),
+    strategy: str = "default",
+):
+    """上传 .pdf / .md / .txt 文件入库
+    strategy: 切片策略名（见 GET /strategies），默认 default
+    """
     content = ""
     if file.filename.lower().endswith(".pdf"):
         reader = PdfReader(file.file)
@@ -242,66 +248,44 @@ async def ingest(file: UploadFile, _: bool = Depends(verify_api_key)):
     if not content.strip():
         raise HTTPException(400, "文件内容为空")
     
-    chunks = _chunk_text(content)
+    chunks = _chunk_text(content, strategy=strategy)
     ids = [str(uuid.uuid4()) for _ in chunks]
     source = file.filename
-    metadatas = [{"source": source} for _ in chunks]
+    metadatas = [{"source": source, "strategy": strategy} for _ in chunks]
     
     COL.add(documents=chunks, ids=ids, metadatas=metadatas)
-    return {"ingested": len(chunks), "source": source, "total": COL.count()}
+    return {"ingested": len(chunks), "source": source, "strategy": strategy, "total": COL.count()}
 
 @app.post("/ingest-text")
-async def ingest_text(body: dict, _: bool = Depends(verify_api_key)):
-    """直接录入一段文本（方便测试）"""
+async def ingest_text(
+    body: dict,
+    _: bool = Depends(verify_api_key),
+):
+    """直接录入一段文本（方便测试）
+    body: {text, source, strategy}  strategy 默认 default
+    """
     text = body.get("text", "").strip()
     source = body.get("source", "inline")
+    strategy = body.get("strategy", "default")
     if not text:
         raise HTTPException(400, "text required")
     
-    chunks = _chunk_text(text)
+    chunks = _chunk_text(text, strategy=strategy)
     ids = [str(uuid.uuid4()) for _ in chunks]
-    metadatas = [{"source": source} for _ in chunks]
+    metadatas = [{"source": source, "strategy": strategy} for _ in chunks]
     
     COL.add(documents=chunks, ids=ids, metadatas=metadatas)
-    return {"ingested": len(chunks), "source": source, "total": COL.count()}
+    return {"ingested": len(chunks), "source": source, "strategy": strategy, "total": COL.count()}
 
-def _chunk_text(text: str) -> list:
-    """中文智能切片：先按段落（\n\n），太小了再按句号/分号"""
-    chunks = [c.strip() for c in text.split("\n\n") if len(c.strip()) > 20]
-    if len(chunks) < 3 and len(text) > 100:
-        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > 15]
-    if not chunks:
-        chunks = [text]
-    return chunks
+# ═══════════════════════════════════════════════════════════════════
+# Prompt 模板管理 —— 从 prompts/*.txt 读，可页面编辑
+# ═══════════════════════════════════════════════════════════════════
+PROMPTS_DIR = Path(__file__).parent / "prompts"
+PROMPTS_DIR.mkdir(exist_ok=True)
 
-@app.post("/query")
-async def query(body: dict, _: bool = Depends(verify_api_key)):
-    """RAG + LLM FABE 问答"""
-    q = body.get("question", "").strip()
-    if not q:
-        raise HTTPException(400, "question required")
-    
-    results = COL.query(query_texts=[q], n_results=5)
-    chunks = results["documents"][0] if results["documents"] else []
-    distances = results["distances"][0] if results["distances"] else []
-    metadatas_list = results["metadatas"][0] if results.get("metadatas") else []
-    
-    if not chunks:
-        return JSONResponse({
-            "answer": "⚠️ 知识库为空，请先上传产品文档。",
-            "sources": [],
-            "total_docs": 0,
-        })
-    
-    # 组装 top-3 参考
-    top3 = list(zip(chunks[:3], distances[:3], metadatas_list[:3] if metadatas_list else [{}]*3))
-    context_block = "\n".join(
-        f"[{i+1}] (相似度 {1-d:.3f}, 来源 {(m or {}).get('source','?')}) {c}"
-        for i, (c, d, m) in enumerate(top3)
-    )
-    
-    # 构造 FABE prompt 并调 LLM
-    fabe_prompt = f"""你是一个专业的 B2B 销售话术专家。请基于以下参考内容，按 FABE 法则组织一段完整的销售回答。
+# 内置兜底 prompt（文件不存在时用）
+_BUILTIN_PROMPTS = {
+    "fabe": """你是一个专业的 B2B 销售话术专家。请基于以下参考内容，按 FABE 法则组织一段完整的销售回答。
 
 规则：
 1. 如果参考片段里没有足够信息回答，诚实说"知识库暂未收录相关内容"，不要编造
@@ -311,13 +295,388 @@ async def query(body: dict, _: bool = Depends(verify_api_key)):
 5. Evidence 引用认证/案例/数据作为佐证
 6. 回答用中文，口语化，符合销售对客户说话的风格，200-400字
 
-客户问题：{q}
+客户问题：{question}
 
 参考内容：
-{context_block}
+{context}
 
-请输出完整的 FABE 话术："""
+请输出完整的 FABE 话术：""",
+}
+
+def _get_prompt(name: str, **kwargs) -> str:
+    """读 prompt 模板文件 → .format(kwargs) 填充占位符"""
+    p = PROMPTS_DIR / f"{name}.txt"
+    template = p.read_text(encoding="utf-8") if p.exists() else _BUILTIN_PROMPTS.get(name, _BUILTIN_PROMPTS["fabe"])
+    return template.format(**kwargs) if kwargs else template
+
+@app.get("/prompts/{name}")
+def get_prompt(name: str, _: bool = Depends(verify_api_key)):
+    """读取 prompt 模板 —— portal 页面编辑前先 fetch"""
+    p = PROMPTS_DIR / f"{name}.txt"
+    content = p.read_text(encoding="utf-8") if p.exists() else _BUILTIN_PROMPTS.get(name, "")
+    return {"name": name, "content": content, "builtin": not p.exists()}
+
+@app.put("/prompts/{name}")
+def put_prompt(name: str, body: dict, _: bool = Depends(verify_api_key)):
+    """保存 prompt 模板 —— 写 .txt 文件，立即生效不用重启"""
+    content = body.get("content", "").strip()
+    if not content:
+        raise HTTPException(400, "content required")
+    # 安全检查：只允许字母数字下划线
+    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        raise HTTPException(400, "invalid prompt name")
+    p = PROMPTS_DIR / f"{name}.txt"
+    p.write_text(content, encoding="utf-8")
+    return {"ok": True, "name": name, "path": str(p)}
+
+@app.get("/prompts")
+def list_prompts(_: bool = Depends(verify_api_key)):
+    """列出所有 prompt 模板（文件 + 内置）"""
+    builtin_names = set(_BUILTIN_PROMPTS.keys())
+    file_names = {p.stem for p in PROMPTS_DIR.glob("*.txt")}
+    all_names = builtin_names | file_names
+    return [
+        {"name": n, "has_file": n in file_names, "has_builtin": n in builtin_names}
+        for n in sorted(all_names)
+    ]
+
+# ═══════════════════════════════════════════════════════════════════
+# BM25 + RRF 混合检索（Step 3 新增）
+# ═══════════════════════════════════════════════════════════════════
+try:
+    import rank_bm25
+    BM25_AVAILABLE = True
+except ImportError:
+    BM25_AVAILABLE = False
+    print("[bm25] rank-bm25 未安装，混合检索将跳过 BM25 路径")
+
+try:
+    import jieba
+    JIEBA_AVAILABLE = True
+except ImportError:
+    JIEBA_AVAILABLE = False
+
+def _chinese_tokenize(text: str) -> list:
+    """中文分词 —— 优先 jieba，fallback 到简单字切分"""
+    if JIEBA_AVAILABLE:
+        return [t.strip() for t in jieba.cut(text) if t.strip()]
+    # 简单 fallback：按标点切 + 每个字也加进去（应对专有名词）
+    tokens = [c for c in re.split(r'[，。！？；：、\s]+', text) if c]
+    for c in text:
+        if c not in '，。！？；：、 \n':
+            tokens.append(c)
+    return tokens
+
+def _bm25_retrieve(query: str, documents: list, top_k: int = 5) -> tuple:
+    """BM25 检索 —— 返回 (chunks, scores)"""
+    if not BM25_AVAILABLE or not documents:
+        return [], []
+    tokenized = [_chinese_tokenize(d) for d in documents]
+    bm25 = rank_bm25.BM25Okapi(tokenized)
+    q_tokens = _chinese_tokenize(query)
+    scores = bm25.get_scores(q_tokens)
+    # 取 top-k
+    ranked = sorted(enumerate(scores), key=lambda x: -x[1])[:top_k]
+    chunks = [documents[i] for i, _ in ranked]
+    return chunks, [s for _, s in ranked]
+
+def _rrf_fuse(vec_chunks: list, bm25_chunks: list, k: int = 60) -> list:
+    """
+    Reciprocal Rank Fusion —— 按名次融合，不看绝对分数
+    RRF(d) = sum(1/(k + rank_i))  rank 从 1 开始
+    """
+    scores = {}
+    for rank, doc in enumerate(vec_chunks, 1):
+        scores[doc] = scores.get(doc, 0) + 1 / (k + rank)
+    for rank, doc in enumerate(bm25_chunks, 1):
+        scores[doc] = scores.get(doc, 0) + 1 / (k + rank)
+    return sorted(scores.keys(), key=lambda d: -scores[d])
+
+def _hybrid_search(query: str, top_k: int = 5, use_bm25: bool = True):
+    """
+    混合检索：向量 + BM25 + RRF 融合
+    返回 (chunks, distances, sources) 格式和原来 COL.query 保持一致
+    """
+    # 1. 向量检索（先拉多一点给融合空间）
+    vector_k = top_k * 3 if use_bm25 else top_k
+    results = COL.query(query_texts=[query], n_results=vector_k, include=["documents", "metadatas", "distances"])
+    vec_chunks = results["documents"][0] if results["documents"] else []
+    vec_distances = results["distances"][0] if results["distances"] else []
+    vec_metadatas = results["metadatas"][0] if results.get("metadatas") else []
     
+    if not vec_chunks:
+        return [], [], []
+    
+    if not use_bm25 or not BM25_AVAILABLE:
+        # 纯向量模式
+        return vec_chunks[:top_k], vec_distances[:top_k], vec_metadatas[:top_k] or [{}]*top_k
+    
+    # 2. BM25 检索（用完整 chunk 池当 corpus）
+    bm25_chunks, _ = _bm25_retrieve(query, vec_chunks, top_k=vector_k)
+    
+    # 3. RRF 融合
+    fused_chunks = _rrf_fuse(vec_chunks, bm25_chunks, k=60)[:top_k]
+    
+    # 4. 还原 distances 和 metadatas（融合后按 chunk 文本回填）
+    dist_map = {c: d for c, d in zip(vec_chunks, vec_distances)}
+    meta_map = {c: m for c, m in zip(vec_chunks, vec_metadatas or [{}]*len(vec_chunks))}
+    fused_distances = [dist_map.get(c, 1.0) for c in fused_chunks]
+    fused_metadatas = [meta_map.get(c, {}) for c in fused_chunks]
+    
+    return fused_chunks, fused_distances, fused_metadatas
+
+# ═══════════════════════════════════════════════════════════════════
+# Step 1 · 切片策略配置 —— 从 configs/kb_strategies.json 读
+# ═══════════════════════════════════════════════════════════════════
+import json as _json
+
+def _load_strategies() -> dict:
+    """加载切片策略配置，失败回退到内置 default"""
+    p = Path(__file__).parent / "configs" / "kb_strategies.json"
+    if p.exists():
+        try:
+            raw = _json.loads(p.read_text(encoding="utf-8"))
+            # 过滤掉 _comment 等元数据
+            return {k: v for k, v in raw.items() if not k.startswith("_")}
+        except Exception as e:
+            print(f"[config] 策略配置加载失败: {e}")
+    # 内置兜底
+    return {
+        "default": {
+            "name": "默认",
+            "mode": "paragraph",
+            "chunk_size": 500,
+            "chunk_overlap": 50,
+            "min_chunk_len": 20,
+            "max_chunk_len": 2000,
+        }
+    }
+
+CHUNK_STRATEGIES = _load_strategies()
+DEFAULT_STRATEGY = "default"
+
+# 给 ingest 端点加上 strategy 参数接收（需要加 import）
+from fastapi import Query
+
+@app.get("/strategies")
+def list_strategies():
+    """列出所有可用切片策略 —— 给 portal 下拉选"""
+    out = {}
+    for key, s in CHUNK_STRATEGIES.items():
+        out[key] = {
+            "name": s.get("name", key),
+            "mode": s.get("mode", "paragraph"),
+            "chunk_size": s.get("chunk_size", 500),
+            "chunk_overlap": s.get("chunk_overlap", 50),
+            "min_chunk_len": s.get("min_chunk_len", 20),
+            "max_chunk_len": s.get("max_chunk_len", 2000),
+            "desc": s.get("desc", ""),
+        }
+    return out
+
+def _chunk_text(text: str, strategy: str = "default") -> list:
+    """
+    中文智能切片 —— 按配置参数化
+    strategy: configs/kb_strategies.json 里的 key
+    """
+    s = CHUNK_STRATEGIES.get(strategy, CHUNK_STRATEGIES[DEFAULT_STRATEGY])
+    mode = s.get("mode", "paragraph")
+    min_len = s.get("min_chunk_len", 20)
+    max_len = s.get("max_chunk_len", 2000)
+    chunk_size = s.get("chunk_size", 500)
+    overlap = s.get("chunk_overlap", 50)
+    
+    # Step 1: 按 mode 切
+    if mode == "paragraph":
+        # 先按 \n\n 段落，段落太大再按句号切
+        chunks = [c.strip() for c in text.split("\n\n") if len(c.strip()) > min_len]
+        # 如果段落太大，强制按句号再切
+        chunks = _split_by_sentence_if_big(chunks, min_len, max_len)
+    elif mode == "sentence":
+        # 直接按句号/分号切（销售话术短段落优先）
+        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > min_len]
+    else:
+        chunks = [text]  # fallback: 不切
+    
+    # Step 2: 如果还是没切出来，fallback 到 sentence
+    if not chunks:
+        chunks = [c.strip() for c in re.split(r'[。；\n]', text) if len(c.strip()) > min_len]
+    if not chunks:
+        chunks = [text]
+    
+    return chunks
+
+def _split_by_sentence_if_big(chunks: list, min_len: int, max_len: int) -> list:
+    """段落太大 → 按句号/分号再切一次"""
+    result = []
+    for c in chunks:
+        if len(c) <= max_len:
+            result.append(c)
+        else:
+            sub = [x.strip() for x in re.split(r'[。；\n]', c) if len(x.strip()) > min_len]
+            result.extend(sub if sub else [c])
+    return result
+
+# ========== Step 4: 切片预览 + 手动编辑 ==========
+
+@app.get("/chunks")
+def list_chunks(
+    page: int = Query(1, ge=1, description="第几页"),
+    page_size: int = Query(20, ge=1, le=200, description="每页条数"),
+    source: str | None = Query(None, description="按来源过滤"),
+    strategy: str | None = Query(None, description="按切片策略过滤"),
+    keyword: str | None = Query(None, description="按关键词全文搜索"),
+):
+    """分页列出所有切片 —— 支持按 source/strategy/keyword 过滤"""
+    total = COL.count()
+    
+    # 构造 where 过滤器
+    where = {}
+    if source:
+        where["source"] = source
+    if strategy:
+        where["strategy"] = strategy
+    
+    offset = (page - 1) * page_size
+    
+    if keyword:
+        # 关键词搜索 → 用 query 而不是 get
+        results = COL.query(
+            query_texts=[keyword],
+            n_results=min(total, page_size),
+            where=where if where else None,
+            include=["documents", "metadatas", "distances"],
+        )
+        ids = results["ids"][0] if results["ids"] else []
+        docs = results["documents"][0] if results["documents"] else []
+        metas = results["metadatas"][0] if results["metadatas"] else []
+        distances = results["distances"][0] if results["distances"] else []
+        total = len(ids)
+    else:
+        results = COL.get(
+            limit=page_size,
+            offset=offset,
+            where=where if where else None,
+            include=["documents", "metadatas"],
+        )
+        ids = results["ids"]
+        docs = results["documents"]
+        metas = results["metadatas"]
+        distances = [None] * len(ids)
+    
+    chunks = []
+    for i, cid in enumerate(ids):
+        chunks.append({
+            "id": cid,
+            "text": docs[i] if docs else "",
+            "text_preview": (docs[i][:80] + "…") if docs and len(docs[i]) > 80 else (docs[i] if docs else ""),
+            "length": len(docs[i]) if docs else 0,
+            "source": (metas[i] or {}).get("source", "unknown") if metas else "unknown",
+            "strategy": (metas[i] or {}).get("strategy", "unknown") if metas else "unknown",
+            "score": round(1 - distances[i], 4) if distances and distances[i] is not None else None,
+        })
+    
+    return JSONResponse({
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": max(1, (total + page_size - 1) // page_size),
+        "chunks": chunks,
+    })
+
+
+@app.get("/chunks/{chunk_id}")
+def get_chunk(chunk_id: str):
+    """单条切片详情"""
+    results = COL.get(ids=[chunk_id], include=["documents", "metadatas"])
+    if not results["ids"]:
+        raise HTTPException(404, "chunk not found")
+    
+    return JSONResponse({
+        "id": chunk_id,
+        "text": results["documents"][0],
+        "length": len(results["documents"][0]),
+        "metadata": results["metadatas"][0] or {},
+    })
+
+
+@app.patch("/chunks/{chunk_id}")
+def update_chunk(chunk_id: str, body: dict):
+    """
+    手动修改切片内容 —— 自动重算 embedding 存入向量库
+    可以改 text、也可以改 metadata 里的 source/strategy
+    """
+    results = COL.get(ids=[chunk_id], include=["documents", "metadatas"])
+    if not results["ids"]:
+        raise HTTPException(404, "chunk not found")
+    
+    updates = {}
+    
+    # 改文本 → 自动重算 embedding（ChromaDB 用 collection 绑定的 embedding_function）
+    new_text = body.get("text")
+    if new_text is not None:
+        if len(new_text.strip()) < 5:
+            raise HTTPException(400, "text too short (min 5 chars)")
+        updates["documents"] = [new_text]
+    
+    # 改 metadata
+    new_source = body.get("source")
+    new_strategy = body.get("strategy")
+    if new_source or new_strategy:
+        old_meta = results["metadatas"][0] or {}
+        new_meta = dict(old_meta)
+        if new_source:
+            new_meta["source"] = new_source
+        if new_strategy:
+            new_meta["strategy"] = new_strategy
+        updates["metadatas"] = [new_meta]
+    
+    if not updates:
+        raise HTTPException(400, "nothing to update —— 需要 text 或 source 或 strategy 字段")
+    
+    COL.update(ids=[chunk_id], **updates)
+    
+    # 返回更新后的完整数据
+    results2 = COL.get(ids=[chunk_id], include=["documents", "metadatas"])
+    return JSONResponse({
+        "updated": True,
+        "id": chunk_id,
+        "new_text": results2["documents"][0],
+        "new_metadata": results2["metadatas"][0] or {},
+    })
+
+
+# ========== 原端点（query, webhook 等） ==========
+
+@app.post("/query")
+async def query(body: dict, _: bool = Depends(verify_api_key)):
+    """RAG + LLM FABE 问答 —— 混合检索 + 文件化 Prompt"""
+    q = body.get("question", "").strip()
+    top_k = body.get("top_k", 5)
+    use_bm25 = body.get("use_bm25", True)
+    if not q:
+        raise HTTPException(400, "question required")
+    
+    # ===== 混合检索（向量 + BM25 + RRF 融合）=====
+    chunks, distances, metadatas_list = _hybrid_search(q, top_k=top_k, use_bm25=use_bm25)
+    
+    if not chunks:
+        return JSONResponse({
+            "answer": "⚠️ 知识库为空，请先上传产品文档。",
+            "sources": [],
+            "total_docs": 0,
+            "hybrid": {"bm25_available": BM25_AVAILABLE, "use_bm25": False},
+        })
+    
+    # 组装 top-3 参考
+    top3 = list(zip(chunks[:3], distances[:3], metadatas_list[:3]))
+    context_block = "\n".join(
+        f"[{i+1}] (相似度 {1-d:.3f}, 来源 {(m or {}).get('source','?')}) {c}"
+        for i, (c, d, m) in enumerate(top3)
+    )
+    
+    # ===== 从文件读 FABE prompt 模板（可页面编辑，不用重启）=====
+    fabe_prompt = _get_prompt("fabe", question=q, context=context_block)
     llm_reply, llm_backend = call_llm(fabe_prompt)
     
     # 如果是模板回退，直接返回检索片段就好
@@ -338,6 +697,11 @@ async def query(body: dict, _: bool = Depends(verify_api_key)):
         ],
         "llm_used": llm_backend,
         "total_docs": COL.count(),
+        "hybrid": {
+            "bm25_available": BM25_AVAILABLE,
+            "jieba_available": JIEBA_AVAILABLE,
+            "use_bm25": use_bm25 and BM25_AVAILABLE,
+        },
     })
 
 @app.post("/webhook")

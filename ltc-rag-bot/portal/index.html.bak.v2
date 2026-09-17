@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>LTC RAG Bot · 知识库管理门户</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:32px 24px;text-align:center}
+.header h1{font-size:24px;font-weight:700}
+.header p{opacity:.85;margin-top:6px;font-size:14px}
+.status-bar{max-width:900px;margin:24px auto;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat-card{background:#1e293b;border-radius:10px;padding:14px;border:1px solid #334155}
+.stat-card .label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+.stat-card .value{font-size:22px;font-weight:700;color:#60a5fa;margin-top:4px}
+.stat-card .value.ok{color:#4ade80}.stat-card .value.warn{color:#fbbf24}.stat-card .value.err{color:#f87171}
+.tabs{max-width:900px;margin:24px auto 0;padding:0 24px;display:flex;gap:8px}
+.tab{padding:8px 16px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;cursor:pointer;font-size:13px}
+.tab.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.panel{max-width:900px;margin:16px auto;padding:0 24px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dropzone{border:2px dashed #475569;border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all .2s}
+.dropzone:hover,.dropzone.drag{border-color:#3b82f6;background:#1e3a5f}
+.dropzone .icon{font-size:36px;margin-bottom:8px}
+.dropzone p{color:#94a3b8;font-size:13px}
+textarea,input[type=text]{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-family:inherit;font-size:13px}
+textarea{min-height:100px;resize:vertical}
+.btn{background:#3b82f6;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
+.btn:hover{background:#2563eb}
+.btn.ghost{background:transparent;border:1px solid #475569;color:#94a3b8}
+.btn.ghost:hover{background:#334155;color:#fff}
+.btn.danger{background:#dc2626}
+.btn.danger:hover{background:#b91c1c}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.source-tag{background:#334155;color:#cbd5e1;padding:3px 10px;border-radius:12px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin:4px 4px 4px 0}
+.source-tag .count{background:#475569;padding:1px 7px;border-radius:10px;font-size:11px}
+.empty{text-align:center;padding:30px;color:#64748b;font-size:13px}
+.result-box{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px;margin-top:12px;font-size:13px;white-space:pre-wrap;line-height:1.7}
+.result-box .llm-tag{background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px}
+.sources-list{margin-top:10px}
+.source-item{background:#0f172a;border-left:3px solid #3b82f6;padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 6px;font-size:12px;color:#cbd5e1}
+.source-item .score{color:#4ade80;font-weight:600}
+.source-item .src{color:#94a3b8;font-size:11px;margin-left:8px}
+.toast{position:fixed;top:20px;right:20px;background:#1e293b;border:1px solid #334155;padding:12px 20px;border-radius:8px;z-index:100;display:none;font-size:13px}
+.toast.ok{border-color:#4ade80}.toast.err{border-color:#f87171}
+.api-key-row{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+.api-key-row label{font-size:12px;color:#94a3b8}
+.api-key-row input{flex:1;font-family:monospace;font-size:12px}
+@media(max-width:600px){.stat-card .value{font-size:18px}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧠 LTC RAG Bot · 知识库管理门户</h1>
+  <p>上传产品文档 · 测试问答 · 管理向量库</p>
+</div>
+
+<div class="status-bar">
+  <div class="stat-card">
+    <div class="label">状态</div>
+    <div class="value" id="s-status">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">向量总数</div>
+    <div class="value" id="s-docs">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Embedding</div>
+    <div class="value" id="s-emb" style="font-size:12px" title="模型名称">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">API Key 模式</div>
+    <div class="value" id="s-auth" style="font-size:12px">...</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="upload">📁 上传文档</div>
+  <div class="tab" data-tab="query">🔍 问答测试</div>
+  <div class="tab" data-tab="docs">📋 已入库文档</div>
+  <div class="tab" data-tab="settings">⚙️ 设置</div>
+</div>
+
+<!-- 📁 上传文档 -->
+<div class="panel" id="panel-upload">
+  <div class="card">
+    <h3>📂 拖拽或点击上传（支持 .pdf / .md / .txt）</h3>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">⬆️</div>
+      <p>拖文件到这里，或点击选择 · 多个文件可一起选</p>
+    </div>
+    <input type="file" id="file-input" multiple accept=".pdf,.md,.txt" style="display:none">
+    <div class="row">
+      <button class="btn" id="btn-upload">开始上传</button>
+      <span id="upload-status" style="color:#94a3b8;font-size:12px"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>✍️ 直接录入一段文本（测试用）</h3>
+    <textarea id="text-input" placeholder="把产品话术贴这里..."></textarea>
+    <div class="row">
+      <input type="text" id="text-source" placeholder="来源标签（如: 产品手册-电池）" style="max-width:300px">
+      <button class="btn" id="btn-ingest-text">入库</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🔍 问答测试 -->
+<div class="panel" id="panel-query" style="display:none">
+  <div class="card">
+    <h3>💬 提问试试 RAG + LLM</h3>
+    <textarea id="query-input" placeholder="比如：零下30度怎么保证续航？"></textarea>
+    <div class="row">
+      <button class="btn" id="btn-query">🔍 提问</button>
+      <span id="query-status" style="color:#94a3b8;font-size:12px"></span>
+    </div>
+    <div id="query-result" style="display:none">
+      <h4 style="margin-top:14px;font-size:13px;color:#94a3b8">🤖 AI 回答 (FABE)</h4>
+      <div class="result-box" id="query-answer"></div>
+      <h4 style="margin-top:14px;font-size:13px;color:#94a3b8">📎 参考来源</h4>
+      <div id="query-sources" class="sources-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 📋 已入库文档 -->
+<div class="panel" id="panel-docs" style="display:none">
+  <div class="card">
+    <h3>📊 向量库概览</h3>
+    <div id="docs-content"><div class="empty">加载中...</div></div>
+    <div class="row" id="docs-actions" style="display:none">
+      <button class="btn danger" id="btn-clear-all">⚠️ 清空全部（危险）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ⚙️ 设置 -->
+<div class="panel" id="panel-settings" style="display:none">
+  <div class="card">
+    <h3>🔐 API Key</h3>
+    <div class="api-key-row">
+      <label>X-API-Key:</label>
+      <input type="text" id="api-key-input" placeholder="开发模式留空即可">
+      <button class="btn ghost" id="btn-save-key">保存（仅当前会话）</button>
+    </div>
+    <p style="color:#64748b;font-size:12px">如果你在 .env 里把 API_KEY 改成了非默认值，在这里输入同样的 key 才能上传/查询。</p>
+  </div>
+  <div class="card">
+    <h3>🛠 后端信息</h3>
+    <div id="backend-info" style="font-size:13px;line-height:2;color:#cbd5e1"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = location.origin;
+let apiKey = localStorage.getItem('ltc_api_key') || '';
+
+// 通用 fetch 带 API Key
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers||{}) };
+  if (apiKey && !opts.noKey) headers['X-API-Key'] = apiKey;
+  if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = 'block';
+  setTimeout(()=> t.style.display='none', 3000);
+}
+
+// Tab 切换
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.style.display = 'none');
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).style.display = 'block';
+    if (t.dataset.tab === 'docs') loadDocs();
+    if (t.dataset.tab === 'settings') loadBackendInfo();
+  };
+});
+
+// 状态面板
+async function loadStatus() {
+  try {
+    const h = await api('/health', { noKey: true });
+    document.getElementById('s-status').textContent = '✓ 在线';
+    document.getElementById('s-status').className = 'value ok';
+    document.getElementById('s-docs').textContent = h.docs_count;
+    document.getElementById('s-emb').textContent = h.embedding.split(' ')[0];
+    document.getElementById('s-auth').textContent = h.api_key_mode.includes('无') ? '开发模式' : '已鉴权';
+  } catch(e) {
+    document.getElementById('s-status').textContent = '✗ 离线';
+    document.getElementById('s-status').className = 'value err';
+    document.getElementById('s-docs').textContent = '-';
+    document.getElementById('s-emb').textContent = '-';
+    document.getElementById('s-auth').textContent = '-';
+  }
+}
+loadStatus();
+setInterval(loadStatus, 15000);
+
+// ─── 上传 ───
+const dz = document.getElementById('dropzone');
+const fi = document.getElementById('file-input');
+dz.onclick = () => fi.click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
+dz.ondragleave = () => dz.classList.remove('drag');
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drag'); handleFiles(e.dataTransfer.files); };
+fi.onchange = e => handleFiles(e.target.files);
+
+async function handleFiles(files) {
+  for (const f of files) {
+    const fd = new FormData();
+    fd.append('file', f);
+    document.getElementById('upload-status').textContent = `上传中: ${f.name}...`;
+    try {
+      const h = new Headers();
+      if (apiKey) h.set('X-API-Key', apiKey);
+      const r = await fetch(API_BASE + '/ingest', { method: 'POST', headers: h, body: fd });
+      const data = await r.json();
+      if (r.ok) {
+        toast(`✓ ${f.name} → ${data.ingested} 切片`);
+        document.getElementById('upload-status').textContent = `${f.name} ✓`;
+      } else {
+        toast(`✗ ${f.name}: ${data.detail || r.status}`, 'err');
+      }
+    } catch(e) {
+      toast(`✗ ${f.name}: ${e.message}`, 'err');
+    }
+  }
+  loadStatus();
+}
+
+document.getElementById('btn-ingest-text').onclick = async () => {
+  const text = document.getElementById('text-input').value.trim();
+  const source = document.getElementById('text-source').value.trim() || 'inline';
+  if (!text) { toast('请先输入文本', 'err'); return; }
+  try {
+    const r = await api('/ingest-text', { method: 'POST', body: { text, source } });
+    toast(`✓ 入库 ${r.ingested} 切片 · 总计 ${r.total}`);
+    document.getElementById('text-input').value = '';
+    loadStatus();
+  } catch(e) { toast('✗ ' + e.message, 'err'); }
+};
+
+// ─── Query ───
+document.getElementById('btn-query').onclick = async () => {
+  const q = document.getElementById('query-input').value.trim();
+  if (!q) { toast('请先输入问题', 'err'); return; }
+  document.getElementById('query-status').textContent = '查询中...';
+  document.getElementById('query-result').style.display = 'none';
+  try {
+    const r = await api('/query', { method: 'POST', body: { question: q } });
+    document.getElementById('query-result').style.display = 'block';
+    document.getElementById('query-answer').textContent = r.answer;
+    const sl = document.getElementById('query-sources');
+    sl.innerHTML = r.sources.map(s =>
+      `<div class="source-item"><span class="score">相似度 ${(s.score*100).toFixed(1)}%</span><span class="src">📄 ${s.source}</span><br>${s.text}</div>`
+    ).join('');
+    document.getElementById('query-status').textContent = `完成 · ${r.total_docs} 条切片 · LLM: ${r.llm_used}`;
+  } catch(e) { toast('✗ ' + e.message, 'err'); document.getElementById('query-status').textContent = ''; }
+};
+
+// ─── Docs ───
+async function loadDocs() {
+  try {
+    const r = await api('/kb');
+    const tags = Object.entries(r.sources);
+    if (tags.length === 0) {
+      document.getElementById('docs-content').innerHTML = '<div class="empty">知识库为空 · 去「上传文档」页面灌点内容吧</div>';
+      document.getElementById('docs-actions').style.display = 'none';
+    } else {
+      document.getElementById('docs-content').innerHTML =
+        `<p style="color:#94a3b8;font-size:13px;margin-bottom:12px">共 ${r.total_chunks} 条切片 · ${tags.length} 个来源</p>` +
+        tags.map(([src, n]) => `<span class="source-tag">📄 ${src}<span class="count">${n}</span></span>`).join('');
+      document.getElementById('docs-actions').style.display = 'flex';
+    }
+  } catch(e) {
+    document.getElementById('docs-content').innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+  }
+}
+
+document.getElementById('btn-clear-all').onclick = async () => {
+  if (!confirm('确定清空整个知识库？这个操作不可恢复！')) return;
+  try {
+    await api('/kb', { method: 'DELETE' });
+    toast('✓ 已清空');
+    loadDocs(); loadStatus();
+  } catch(e) { toast('✗ ' + e.message, 'err'); }
+};
+
+// ─── Settings ───
+async function loadBackendInfo() {
+  try {
+    const h = await api('/health', { noKey: true });
+    document.getElementById('backend-info').innerHTML =
+      `<div>版本: <b>${h.version}</b></div>` +
+      `<div>Embedding: <b>${h.embedding}</b></div>` +
+      `<div>API Key 模式: <b>${h.api_key_mode}</b></div>` +
+      `<div>飞书配置: <b style="color:${h.feishu_configured?'#4ade80':'#f87171'}">${h.feishu_configured?'已配置':'未配置'}</b></div>` +
+      `<div>向量总数: <b>${h.docs_count}</b></div>`;
+  } catch(e) {
+    document.getElementById('backend-info').textContent = '加载失败: ' + e.message;
+  }
+}
+
+document.getElementById('api-key-input').value = apiKey;
+document.getElementById('btn-save-key').onclick = () => {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('ltc_api_key', apiKey);
+  toast(apiKey ? '✓ API Key 已保存' : '✓ 已清空');
+};
+</script>
+</body>
+</html>
