@@ -779,8 +779,11 @@ async def portal():
 
 @app.get("/portal")
 async def portal_alt():
-    """Portal 备用路径 —— 307 redirect 到 /"""
-    return RedirectResponse(url="/", status_code=307)
+    """Portal 备用路径 —— CloudBase 代理会吞 307 redirect，直接返回 FileResponse"""
+    portal_path = Path(__file__).parent / "portal" / "index.html"
+    if portal_path.exists():
+        return FileResponse(portal_path)
+    return {"detail": "portal/index.html not found"}
 
 @app.get("/health")
 def health():
