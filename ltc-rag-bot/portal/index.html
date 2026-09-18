@@ -2,644 +2,798 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>LTC RAG Bot · 知识库管理门户 {{PORTAL_VERSION}}</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LTC RAG Bot · 知识库管理台 V4</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
-.header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:32px 24px;text-align:center}
-.header h1{font-size:24px;font-weight:700}
-.header p{opacity:.85;margin-top:6px;font-size:14px}
-.status-bar{max-width:960px;margin:24px auto;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.stat-card{background:#1e293b;border-radius:10px;padding:14px;border:1px solid #334155}
-.stat-card .label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
-.stat-card .value{font-size:20px;font-weight:700;color:#60a5fa;margin-top:4px}
-.stat-card .value.ok{color:#4ade80}.stat-card .value.warn{color:#fbbf24}.stat-card .value.err{color:#f87171}
-.tabs{max-width:960px;margin:24px auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap}
-.tab{padding:8px 14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;cursor:pointer;font-size:13px}
-.tab.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
-.panel{max-width:960px;margin:16px auto;padding:0 24px}
-.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:16px}
-.card h3{font-size:15px;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.dropzone{border:2px dashed #475569;border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all .2s}
-.dropzone:hover,.dropzone.drag{border-color:#3b82f6;background:#1e3a5f}
-.dropzone .icon{font-size:36px;margin-bottom:8px}
-.dropzone p{color:#94a3b8;font-size:13px}
-textarea,input[type=text],select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-family:inherit;font-size:13px}
-textarea{min-height:100px;resize:vertical;font-family:monospace;line-height:1.6}
-select{cursor:pointer}
-select:focus,textarea:focus,input:focus{outline:none;border-color:#3b82f6}
-.btn{background:#3b82f6;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
-.btn:hover{background:#2563eb}
-.btn.ghost{background:transparent;border:1px solid #475569;color:#94a3b8}
-.btn.ghost:hover{background:#334155;color:#fff}
-.btn.danger{background:#dc2626}
-.btn.danger:hover{background:#b91c1c}
-.btn.sm{padding:4px 10px;font-size:12px}
+/* ═══════════════════════════════════════════════════════
+   V4 Portal —— Linear/Vercel 风格 · 商务深蓝灰
+   ═══════════════════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#0b0f19;color:#e5e7eb;min-height:100vh;font-size:14px;line-height:1.5}
+a{color:#6366f1;text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Header —— 白底 + 靛蓝/青色渐变细线 */
+.header{background:#ffffff;padding:18px 32px;border-bottom:2px solid transparent;border-image:linear-gradient(90deg,#6366f1,#06b6d4) 1;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:18px;color:#0f172a;font-weight:700;display:flex;align-items:center;gap:10px}
+.header h1 .logo-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4)}
+.header .tag{font-size:11px;color:#64748b;background:#f1f5f9;padding:2px 8px;border-radius:10px;margin-left:8px}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-right .version{font-size:11px;color:#94a3b8}
+
+/* Status bar */
+.status-bar{max-width:1100px;margin:24px auto;padding:0 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat-card{background:#1f2937;border:1px solid #374151;border-radius:10px;padding:14px 16px;transition:border-color .2s}
+.stat-card:hover{border-color:#4b5563}
+.stat-card .label{font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stat-card .value{font-size:22px;font-weight:700;color:#f9fafb}
+.stat-card .sub{font-size:11px;color:#6b7280;margin-top:2px}
+.stat-card.ok .value{color:#22c55e}
+.stat-card.warn .value{color:#f59e0b}
+.stat-card.blue .value{color:#6366f1}
+
+/* Tabs */
+.tabs{max-width:1100px;margin:24px auto 0;padding:0 32px;display:flex;gap:4px;border-bottom:1px solid #374151}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;color:#9ca3af;border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:#e5e7eb}
+.tab.active{color:#f9fafb;border-bottom-color:#6366f1;font-weight:600}
+
+/* Panel / 通用卡片 */
+.panel{max-width:1100px;margin:16px auto;padding:0 32px}
+.card{background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:14px;color:#f3f4f6;margin-bottom:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h4{font-size:13px;color:#e5e7eb;margin:14px 0 8px;font-weight:600}
+
+/* 输入控件 */
+textarea,input[type=text],input[type=password],select{width:100%;background:#111827;border:1px solid #374151;border-radius:8px;padding:10px 12px;color:#e5e7eb;font-family:inherit;font-size:13px;transition:border-color .15s,box-shadow .15s}
+textarea:focus,input:focus,select:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+textarea{resize:vertical;min-height:100px}
+label{display:block;font-size:12px;color:#9ca3af;margin-bottom:4px}
+
+/* 按钮 */
+.btn{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,transform .05s}
+.btn:hover{background:#4f46e5}
+.btn:active{transform:translateY(1px)}
+.btn-secondary{background:#374151;color:#e5e7eb}
+.btn-secondary:hover{background:#4b5563}
+.btn-danger{background:#dc2626}
+.btn-danger:hover{background:#b91c1c}
+.btn-sm{padding:5px 10px;font-size:12px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
-.row label{font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:4px}
-.source-tag{background:#334155;color:#cbd5e1;padding:3px 10px;border-radius:12px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin:4px 4px 4px 0}
-.source-tag .count{background:#475569;padding:1px 7px;border-radius:10px;font-size:11px}
-.empty{text-align:center;padding:30px;color:#64748b;font-size:13px}
-.result-box{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px;margin-top:12px;font-size:13px;white-space:pre-wrap;line-height:1.7}
-.result-box .llm-tag{background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px}
-.sources-list{margin-top:10px}
-.source-item{background:#0f172a;border-left:3px solid #3b82f6;padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 6px;font-size:12px;color:#cbd5e1}
-.source-item .score{color:#4ade80;font-weight:600}
-.source-item .src{color:#94a3b8;font-size:11px;margin-left:8px}
-.toast{position:fixed;top:20px;right:20px;background:#1e293b;border:1px solid #334155;padding:12px 20px;border-radius:8px;z-index:100;display:none;font-size:13px}
-.toast.ok{border-color:#4ade80}.toast.err{border-color:#f87171}
-.chunk-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-.chunk-toolbar input,.chunk-toolbar select{max-width:220px}
-.chunk-list{max-height:600px;overflow-y:auto;border:1px solid #334155;border-radius:8px}
-.chunk-item{background:#0f172a;padding:12px 14px;border-bottom:1px solid #334155;font-size:13px;transition:background .15s}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+
+/* 标签 */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.tag-blue{background:rgba(99,102,241,.15);color:#818cf8}
+.tag-purple{background:rgba(139,92,246,.15);color:#a78bfa}
+.tag-green{background:rgba(34,197,94,.15);color:#4ade80}
+.tag-orange{background:rgba(245,158,11,.15);color:#fbbf24}
+.tag-red{background:rgba(239,68,68,.15);color:#f87171}
+.tag-gray{background:#374151;color:#9ca3af}
+.tag-cyan{background:rgba(6,182,212,.15);color:#22d3ee}
+
+/* 来源 / 策略标签 */
+.source-tag{background:#374151;color:#cbd5e1;padding:2px 10px;border-radius:10px;font-size:11px;display:inline-flex;align-items:center;gap:6px}
+.source-tag .count{background:#4b5563;padding:0 6px;border-radius:8px;font-size:10px;color:#e5e7eb}
+
+/* 问答结果框 */
+.result-box{background:#111827;border:1px solid #374151;border-radius:10px;padding:16px;margin-top:12px;font-size:14px;line-height:1.7;white-space:pre-wrap}
+.result-box .result-header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #374151}
+.result-box .llm-tag{background:#6366f1;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.result-box .cache-tag{background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.result-box .timer{color:#9ca3af;font-size:11px;margin-left:auto}
+.result-box .answer-text{color:#f3f4f6}
+.sources-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.source-item{background:#1f2937;border-left:3px solid #6366f1;padding:10px 14px;border-radius:0 8px 8px 8px;font-size:12px;color:#cbd5e1;cursor:pointer;transition:background .15s}
+.source-item:hover{background:#374151}
+.source-item .score{color:#4ade80;font-weight:600;margin-right:8px}
+.source-item .src{color:#94a3b8;font-size:11px;margin-left:auto}
+.source-item .preview{margin-top:6px;color:#9ca3af;font-size:11px;line-height:1.5}
+
+/* 切片管理 */
+.chunk-toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.chunk-toolbar input,.chunk-toolbar select{max-width:240px}
+.chunk-list{max-height:640px;overflow-y:auto;border:1px solid #374151;border-radius:10px}
+.chunk-item{background:#111827;padding:14px 16px;border-bottom:1px solid #374151;font-size:13px;transition:background .15s;display:flex;gap:12px}
 .chunk-item:last-child{border-bottom:none}
-.chunk-item:hover{background:#1e293b}
-.chunk-item .chunk-meta{display:flex;gap:12px;font-size:11px;color:#94a3b8;margin-bottom:6px;align-items:center}
-.chunk-item .chunk-meta .src{background:#3b82f6;padding:1px 8px;border-radius:4px;color:#fff}
-.chunk-item .chunk-meta .strat{background:#7c3aed;padding:1px 8px;border-radius:4px;color:#fff}
-.chunk-item .chunk-text{color:#cbd5e1;line-height:1.5;word-break:break-all}
-.chunk-item .chunk-actions{display:flex;gap:6px;margin-top:8px}
-.pagination{display:flex;gap:4px;align-items:center;justify-content:center;margin-top:12px}
-.pagination button{background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px}
-.pagination button.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
-.pagination button:disabled{opacity:.3;cursor:not-allowed}
-.pagination span{color:#64748b;font-size:12px;margin:0 6px}
-/* 弹窗 */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}
-.modal-bg.show{display:flex}
-.modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:90%;max-width:640px;max-height:85vh;overflow-y:auto}
-.modal h4{font-size:15px;margin-bottom:14px;color:#e2e8f0}
-.modal label{font-size:12px;color:#94a3b8;display:block;margin:10px 0 4px}
-.modal textarea{min-height:120px}
-.modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
-/* prompt tab */
-.prompt-header{display:flex;gap:10px;align-items:center;margin-bottom:12px}
-.prompt-header select{max-width:200px}
-.prompt-meta{font-size:12px;color:#94a3b8;margin-bottom:8px}
-.prompt-hint{background:#0f172a;border:1px dashed #475569;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px;color:#94a3b8}
-.prompt-hint code{background:#334155;padding:1px 5px;border-radius:3px;color:#fbbf24}
-.checkbox-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8}
-.checkbox-row input[type=checkbox]{width:16px;height:16px;accent-color:#3b82f6}
-@media(max-width:600px){.stat-card .value{font-size:16px}.tabs{gap:4px}.tab{padding:6px 10px;font-size:12px}}
+.chunk-item:hover{background:#1f2937}
+.chunk-item .chunk-main{flex:1;min-width:0}
+.chunk-item .chunk-meta{display:flex;gap:8px;font-size:11px;color:#9ca3af;margin-bottom:8px;align-items:center;flex-wrap:wrap}
+.chunk-item .chunk-meta .src{background:#3b82f6;color:#fff;padding:1px 8px;border-radius:4px}
+.chunk-item .chunk-meta .strat{background:#7c3aed;color:#fff;padding:1px 8px;border-radius:4px}
+.chunk-item .chunk-meta .time{color:#6b7280}
+.chunk-item .chunk-text{color:#d1d5db;line-height:1.6;word-break:break-word}
+.chunk-item .chunk-text.more{cursor:pointer;color:#6366f1;font-size:11px;margin-top:4px;display:inline-block}
+.chunk-item .chunk-actions{display:flex;gap:6px;flex-direction:column}
+.chunk-item input[type=checkbox]{margin-top:4px;width:16px;height:16px;accent-color:#6366f1}
+.chunk-item .len-badge{background:#374151;color:#9ca3af;padding:2px 6px;border-radius:4px;font-size:10px}
 
-/* API Key 缺失引导 banner */
-.banner{background:linear-gradient(90deg,#dc2626,#ea580c);color:#fff;padding:14px 24px;text-align:center;font-size:14px;font-weight:500;border-bottom:1px solid #1e293b}
-.banner button{background:#fff;color:#dc2626;border:none;padding:6px 14px;margin-left:12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px}
-.banner button:hover{background:#fef2f2}
+/* 文件管理 tab —— 文件卡片 */
+.file-groups{display:flex;flex-direction:column;gap:20px}
+.file-group{background:transparent}
+.file-group-title{font-size:12px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.file-group-title .count{background:#374151;color:#9ca3af;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:500}
+.file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.file-card{background:#1f2937;border:1px solid #374151;border-radius:10px;padding:14px;cursor:pointer;transition:border-color .15s,transform .05s}
+.file-card:hover{border-color:#6366f1;transform:translateY(-1px)}
+.file-card .file-icon{font-size:24px;margin-bottom:8px}
+.file-card .file-name{font-size:13px;color:#f3f4f6;font-weight:500;margin-bottom:4px;word-break:break-all}
+.file-card .file-meta{font-size:11px;color:#9ca3af;display:flex;gap:10px;flex-wrap:wrap}
+.file-card .file-meta .sep{color:#4b5563}
+.file-card .file-meta .chunks{color:#6366f1;font-weight:600}
+.file-card .file-actions{margin-top:10px;display:flex;gap:6px}
+.file-empty{text-align:center;padding:32px;color:#6b7280;font-size:12px}
 
+/* 文件展开切片 */
+.file-chunks{margin-top:10px;border-top:1px solid #374151;padding-top:10px}
+.file-chunk{background:#111827;border-left:2px solid #374151;padding:8px 12px;margin-bottom:6px;border-radius:0 6px 6px 6px;font-size:12px;color:#cbd5e1;line-height:1.5}
+
+/* 空状态 */
+.empty-state{text-align:center;padding:48px 24px;color:#6b7280}
+.empty-state .empty-icon{font-size:40px;margin-bottom:12px;opacity:.5}
+.empty-state .empty-title{font-size:14px;color:#9ca3af;margin-bottom:6px}
+.empty-state .empty-hint{font-size:12px;color:#6b7280}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal{background:#1f2937;border:1px solid #374151;border-radius:12px;padding:24px;width:90%;max-width:640px;max-height:85vh;overflow-y:auto}
+.modal h4{color:#f3f4f6;margin-bottom:14px;font-size:15px}
+
+/* Toast */
+.toast{position:fixed;top:20px;right:20px;background:#1f2937;border:1px solid #374151;border-radius:8px;padding:12px 20px;color:#f3f4f6;font-size:13px;z-index:300;animation:slide .3s}
+.toast.success{border-left:3px solid #22c55e}
+.toast.error{border-left:3px solid #ef4444}
+@keyframes slide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Prompt 编辑 */
+.prompt-header{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.prompt-header select{max-width:220px}
+.prompt-hint{background:#111827;border:1px dashed #4b5563;border-radius:8px;padding:12px 14px;margin-top:10px;font-size:12px;color:#9ca3af}
+
+/* 上传区域 */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.upload-grid{grid-template-columns:1fr}}
+
+/* 批量操作栏 */
+.bulk-bar{display:flex;gap:10px;align-items:center;padding:10px 12px;background:#111827;border-radius:8px;margin-bottom:10px;font-size:12px;color:#9ca3af}
+.bulk-bar .count{color:#6366f1;font-weight:600}
+
+/* Cache stats 条 */
+.cache-bar{display:flex;gap:16px;align-items:center;padding:10px 14px;background:#111827;border:1px solid #374151;border-radius:8px;margin-bottom:14px;font-size:12px;color:#9ca3af;flex-wrap:wrap}
+.cache-bar .stat{display:flex;gap:4px;align-items:center}
+.cache-bar .stat strong{color:#f3f4f6;font-size:13px}
+
+/* 分页 */
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:12px;font-size:12px;color:#9ca3af}
+.pagination button{background:#374151;border:none;color:#e5e7eb;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px}
+.pagination button:hover:not(:disabled){background:#4b5563}
+.pagination button.active{background:#6366f1}
+.pagination button:disabled{opacity:.4;cursor:not-allowed}
+
+@media(max-width:600px){
+    .header-inner{flex-direction:column;gap:8px}
+    .stat-card .value{font-size:18px}
+    .tabs{padding:0 16px;overflow-x:auto}
+    .panel{padding:0 16px}
+    .chunk-toolbar input,.chunk-toolbar select{max-width:100%}
+}
 </style>
 </head>
-<body><div id="need-key-banner" class="banner" style="display:none">
-  🔐 检测到 <b>生产模式</b> 但 API Key 未配置，上传/问答会返回 401 错误。
-  <button onclick="document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.style.display='none');document.querySelector('.tab[data-tab=settings]').classList.add('active');document.getElementById('panel-settings').style.display='block';document.getElementById('api-key-input').focus();">去 ⚙️ 设置 填入 API Key →</button>
-</div>
+<body>
 
-
+<!-- ════════ Header ════════ -->
 <div class="header">
-  <h1>🧠 LTC RAG Bot · 知识库管理门户 v2</h1>
-  <p>多策略切片 · BM25 混合检索 · Prompt 可编辑 · 切片可手动修</p>
+  <div class="header-inner">
+    <h1><span class="logo-dot"></span> LTC RAG Bot <span class="tag">V4 · 知识库管理台</span></h1>
+    <div class="header-right">
+      <span class="version" id="version-tag">v4.0</span>
+    </div>
+  </div>
 </div>
 
+<!-- ════════ Status ════════ -->
 <div class="status-bar">
-  <div class="stat-card">
-    <div class="label">状态</div>
-    <div class="value" id="s-status">...</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">切片总数</div>
-    <div class="value" id="s-docs">...</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">BM25</div>
-    <div class="value" id="s-bm25" style="font-size:14px">...</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">飞书</div>
-    <div class="value" id="s-feishu" style="font-size:14px">...</div>
-  </div>
-  <div class="stat-card">
-    <div class="label">API Key</div>
-    <div class="value" id="s-auth" style="font-size:14px">...</div>
-  </div>
+  <div class="stat-card blue"><div class="label">切片总数</div><div class="value" id="stat-chunks">…</div><div class="sub" id="stat-files">0 个文件</div></div>
+  <div class="stat-card ok"><div class="label">向量库</div><div class="value" id="stat-vector">就绪</div></div>
+  <div class="stat-card"><div class="label">缓存快照</div><div class="value" id="stat-cache">0</div><div class="sub" id="stat-cache-hot">0 热</div></div>
+  <div class="stat-card warn"><div class="label">BM25 检索</div><div class="value" id="stat-bm25">…</div></div>
 </div>
 
+<!-- ════════ Tabs ════════ -->
 <div class="tabs">
-  <div class="tab active" data-tab="upload">📁 上传文档</div>
-  <div class="tab" data-tab="query">🔍 问答测试</div>
+  <div class="tab active" data-tab="query">💬 知识库问答</div>
+  <div class="tab" data-tab="ingest">📤 上传文档</div>
   <div class="tab" data-tab="chunks">🔪 切片管理</div>
-  <div class="tab" data-tab="prompts">📝 Prompt 模板</div>
-  <div class="tab" data-tab="docs">📋 来源概览</div>
-  <div class="tab" data-tab="settings">⚙️ 设置</div>
+  <div class="tab" data-tab="files">📁 文件管理</div>
+  <div class="tab" data-tab="prompts">⚙️ Prompt 设置</div>
 </div>
 
-<!-- 📁 上传文档（v2 + 切片策略） -->
-<div class="panel" id="panel-upload">
-  <div class="card">
-    <h3>📂 拖拽或点击上传（.pdf / .md / .txt）</h3>
-    <div class="chunk-toolbar">
-      <label style="font-size:12px;color:#94a3b8">切片策略:</label>
-      <select id="upload-strategy"><option value="default">default · 段落优先</option></select>
-    </div>
-    <div class="dropzone" id="dropzone">
-      <div class="icon">⬆️</div>
-      <p>拖文件到这里，或点击选择 · 多个文件可一起选</p>
-    </div>
-    <input type="file" id="file-input" multiple accept=".pdf,.md,.txt" style="display:none">
-    <div class="row">
-      <button class="btn" id="btn-upload">开始上传</button>
-      <span id="upload-status" style="color:#94a3b8;font-size:12px"></span>
-    </div>
-  </div>
-  <div class="card">
-    <h3>✍️ 直接录入一段文本</h3>
-    <textarea id="text-input" placeholder="把产品话术/招投标文档片段贴这里..."></textarea>
-    <div class="row">
-      <input type="text" id="text-source" placeholder="来源标签（如: 产品手册-电池）" style="max-width:300px">
-      <select id="text-strategy" style="max-width:250px"><option value="default">default</option></select>
-      <button class="btn" id="btn-ingest-text">入库</button>
-    </div>
-  </div>
-</div>
+<!-- ════════ Panel ════════ -->
+<div class="panel">
 
-<!-- 🔍 问答测试（v2 + BM25 开关 + 显示 hybrid 信息） -->
-<div class="panel" id="panel-query" style="display:none">
-  <div class="card">
-    <h3>💬 提问试试 RAG + LLM（FABE 话术生成）</h3>
-    <textarea id="query-input" placeholder="比如：零下30度续航如何保证？"></textarea>
-    <div class="row">
-      <button class="btn" id="btn-query">🔍 提问</button>
-      <label class="checkbox-row"><input type="checkbox" id="query-bm25" checked> BM25 混合检索</label>
-      <span id="query-status" style="color:#94a3b8;font-size:12px;margin-left:auto"></span>
+  <!-- 💬 问答 tab -->
+  <div id="tab-query" class="card">
+    <h3>💬 问点什么吧</h3>
+    <div class="cache-bar" id="cache-bar" style="display:none">
+      <span class="stat">📦 总快照 <strong id="cache-snapshots">0</strong></span>
+      <span class="stat">🔥 高频 <strong id="cache-hot">0</strong></span>
+      <span style="margin-left:auto">
+        <button class="btn btn-secondary btn-sm" onclick="clearCache()">清空缓存</button>
+      </span>
     </div>
-    <div id="query-result" style="display:none">
-      <h4 style="margin-top:14px;font-size:13px;color:#94a3b8">🤖 AI 回答 (FABE)</h4>
-      <div class="result-box" id="query-answer"></div>
-      <h4 style="margin-top:14px;font-size:13px;color:#94a3b8">📎 参考来源</h4>
-      <div id="query-sources" class="sources-list"></div>
+    <label>你的问题</label>
+    <input type="text" id="query-input" placeholder="比如：产品怎么部署？核心 FABE 是什么？" style="margin-bottom:10px">
+    <button class="btn" onclick="doQuery()" id="query-btn">🚀 提问</button>
+    <div id="query-result"></div>
+  </div>
+
+  <!-- 📤 上传 tab -->
+  <div id="tab-ingest" class="card" style="display:none">
+    <h3>📤 入库新文档</h3>
+    <div class="upload-grid">
+      <div>
+        <h4>上传文件</h4>
+        <label>选择文件（.txt / .md / .pdf）</label>
+        <input type="file" id="file-input" accept=".txt,.md,.pdf" multiple style="margin-bottom:10px">
+        <label>切片策略</label>
+        <select id="upload-strategy" style="margin-bottom:10px"></select>
+        <button class="btn" onclick="uploadFiles()">📥 开始入库</button>
+      </div>
+      <div>
+        <h4>直接粘贴文本</h4>
+        <label>来源标签</label>
+        <input type="text" id="text-source" placeholder="如：产品手册-电池" style="margin-bottom:8px;max-width:300px">
+        <label>切片策略</label>
+        <select id="text-strategy" style="margin-bottom:10px;max-width:250px"></select>
+        <label>文本内容</label>
+        <textarea id="text-input" placeholder="粘贴要入库的文本…" style="margin-bottom:10px"></textarea>
+        <button class="btn" onclick="ingestText()">📥 直接入库</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- 🔪 切片管理（v2 新增） -->
-<div class="panel" id="panel-chunks" style="display:none">
-  <div class="card">
-    <h3>🔪 切片管理（手动编辑 / 删除）</h3>
+  <!-- 🔪 切片管理 tab -->
+  <div id="tab-chunks" class="card" style="display:none">
+    <h3>🔪 切片管理</h3>
     <div class="chunk-toolbar">
       <input type="text" id="chunk-keyword" placeholder="🔍 全文搜索切片...">
       <select id="chunk-filter-source"><option value="">所有来源</option></select>
       <select id="chunk-filter-strategy"><option value="">所有策略</option></select>
-      <button class="btn sm" id="chunk-btn-search">搜索</button>
-      <span id="chunk-total" style="color:#94a3b8;font-size:12px;margin-left:auto"></span>
+      <button class="btn btn-secondary btn-sm" onclick="refreshChunks()">🔄 刷新</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-danger btn-sm" id="bulk-delete-btn" onclick="bulkDeleteChunks()" style="display:none">🗑 批量删除</button>
     </div>
-    <div class="chunk-list" id="chunk-list"><div class="empty">加载中...</div></div>
+    <div id="chunk-bulk-bar" class="bulk-bar" style="display:none">已选 <span class="count" id="chunk-bulk-count">0</span> 条</div>
+    <div id="chunk-list" class="chunk-list"></div>
     <div class="pagination" id="chunk-pagination"></div>
   </div>
-</div>
 
-<!-- 📝 Prompt 模板（v2 新增） -->
-<div class="panel" id="panel-prompts" style="display:none">
-  <div class="card">
-    <h3>📝 Prompt 模板（文件化，改完热生效）</h3>
+  <!-- 📁 文件管理 tab（V4 新增） -->
+  <div id="tab-files" class="card" style="display:none">
+    <h3>📁 文件管理</h3>
+    <div class="chunk-toolbar">
+      <select id="file-filter-type"><option value="">所有类型</option></select>
+      <select id="file-filter-date">
+        <option value="">全部时间</option>
+        <option value="today">今天</option>
+        <option value="week">最近 7 天</option>
+        <option value="month">最近 30 天</option>
+      </select>
+      <input type="text" id="file-search" placeholder="🔍 搜索文件名...">
+      <button class="btn btn-secondary btn-sm" onclick="refreshFiles()">🔄 刷新</button>
+    </div>
+    <div id="files-container"><div class="empty-state"><div class="empty-icon">📂</div><div class="empty-title">暂无文件</div><div class="empty-hint">去 📤 上传文档 入库第一个文件吧</div></div></div>
+  </div>
+
+  <!-- ⚙️ Prompt 设置 tab -->
+  <div id="tab-prompts" class="card" style="display:none">
+    <h3>⚙️ Prompt 模板</h3>
     <div class="prompt-header">
       <select id="prompt-select"></select>
-      <button class="btn sm" id="prompt-btn-reload">🔄 重新加载</button>
-      <button class="btn sm" id="prompt-btn-save">💾 保存修改</button>
-      <button class="btn sm ghost" id="prompt-btn-reset">↩️ 恢复内置</button>
-      <span id="prompt-status" style="color:#94a3b8;font-size:12px;margin-left:auto"></span>
+      <span class="tag tag-blue">当前 FABE · 瘦身版</span>
     </div>
-    <div class="prompt-meta" id="prompt-meta"></div>
-    <textarea id="prompt-editor" placeholder="模板内容..."></textarea>
+    <label>Prompt 内容</label>
+    <textarea id="prompt-content" style="min-height:220px;margin-bottom:10px"></textarea>
+    <div class="btn-group">
+      <button class="btn" onclick="savePrompt()">💾 保存 Prompt</button>
+      <button class="btn btn-secondary" onclick="loadPrompt()">🔄 重新加载</button>
+    </div>
     <div class="prompt-hint">
-      <b>可用占位符：</b>
-      <code>{question}</code> — 用户问题 &nbsp;|&nbsp;
-      <code>{context}</code> — RAG 检索到的参考片段<br>
-      保存在 <code>prompts/{name}.txt</code>，删除文件自动恢复内置兜底。
+      💡 Prompt 中用 <code>{question}</code> 和 <code>{context}</code> 作为占位符。保存在 <code>prompts/fabe.txt</code>，留空时使用内置默认版本。
     </div>
   </div>
 </div>
 
-<!-- 📋 来源概览 -->
-<div class="panel" id="panel-docs" style="display:none">
-  <div class="card">
-    <h3>📊 向量库来源概览</h3>
-    <div id="docs-content"><div class="empty">加载中...</div></div>
-    <div class="row" id="docs-actions" style="display:none">
-      <button class="btn danger" id="btn-clear-all">⚠️ 清空全部（危险）</button>
+<!-- 🔧 编辑切片 Modal -->
+<div id="chunk-modal" style="display:none">
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h4>✏️ 编辑切片</h4>
+      <input type="hidden" id="chunk-modal-id">
+      <label>来源</label>
+      <input type="text" id="chunk-modal-source" style="margin-bottom:8px">
+      <label>切片策略</label>
+      <input type="text" id="chunk-modal-strategy" disabled style="background:#111827;margin-bottom:8px">
+      <label>切片内容</label>
+      <textarea id="chunk-modal-text" style="min-height:160px"></textarea>
+      <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn" onclick="saveChunkEdit()">💾 保存</button>
+      </div>
     </div>
   </div>
 </div>
-
-<!-- ⚙️ 设置 -->
-<div class="panel" id="panel-settings" style="display:none">
-  <div class="card">
-    <h3>🔐 API Key</h3>
-    <div class="row">
-      <input type="text" id="api-key-input" value="{{AUTO_API_KEY}}" placeholder="开发模式留空即可" style="max-width:300px">
-      <button class="btn ghost" id="btn-save-key">保存（仅当前会话）</button>
-    </div>
-    <p style="color:#64748b;font-size:12px;margin-top:8px">如果你在 <code>.env</code> 里把 API_KEY 改成了非默认值，在这里输入同样的 key。</p>
-  </div>
-  <div class="card">
-    <h3>🛠 后端信息</h3>
-    <div id="backend-info" style="font-size:13px;line-height:2;color:#cbd5e1"></div>
-  </div>
-</div>
-
-<!-- 🔧 切片编辑弹窗 -->
-<div class="modal-bg" id="chunk-modal">
-  <div class="modal">
-    <h4>✏️ 编辑切片</h4>
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px" id="chunk-modal-id"></div>
-    <label>来源标签</label>
-    <input type="text" id="chunk-modal-source">
-    <label>切片策略</label>
-    <input type="text" id="chunk-modal-strategy" disabled style="background:#1e293b">
-    <label>切片内容（改完自动重算 embedding）</label>
-    <textarea id="chunk-modal-text"></textarea>
-    <div class="modal-actions">
-      <button class="btn ghost" id="chunk-modal-cancel">取消</button>
-      <button class="btn danger sm" id="chunk-modal-delete" style="margin-right:auto">🗑️ 删除</button>
-      <button class="btn" id="chunk-modal-save">💾 保存</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
 
 <script>
-const API_BASE = location.origin;
-let apiKey = localStorage.getItem('ltc_api_key') || '';
-let currentPage = 1;
-let pageSize = 20;
-let editingChunkId = null;
+/* ═════════════════════════════════════════════
+   V4 Portal —— 前端逻辑
+   ═════════════════════════════════════════════ */
+const API = '';  // 同源部署
+const API_KEY = '';  // dev 模式自动跳过
+const headers = () => {
+  const h = {'Content-Type': 'application/json'};
+  if (API_KEY) h['X-API-Key'] = API_KEY;
+  return h;
+};
 
-// ─── 通用 API ───
-async function api(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(opts.headers||{}) };
-  if (apiKey && !opts.noKey) headers['X-API-Key'] = apiKey;
-  if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
-  const r = await fetch(API_BASE + path, { ...opts, headers });
-  if (!r.ok) {
-    if (r.status === 401) {
-      toast('🔐 API Key 缺失或错误 — 请先去 ⚙️ 设置 tab 填入', 'err');
-      // 自动跳转到 settings tab
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-      const settingsTab = document.querySelector('.tab[data-tab="settings"]');
-      if (settingsTab) { settingsTab.classList.add('active'); document.getElementById('panel-settings').style.display = 'block'; document.getElementById('api-key-input').focus(); }
-      throw new Error('401 Unauthorized — 需要 API Key');
-    }
-    const t = await r.text(); throw new Error(`${r.status} ${t}`);
+async function api(path, opts={}) {
+  const res = await fetch(API + path, { ...opts, headers: { ...headers(), ...(opts.headers||{}) } });
+  if (!res.ok) {
+    const err = await res.text().catch(()=>res.statusText);
+    throw new Error(`${res.status}: ${err}`);
   }
-  return r.json();
-}
-function toast(msg, type='ok') {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast '+type; t.style.display='block';
-  setTimeout(()=> t.style.display='none', 2800);
+  return res.json();
 }
 
-// ─── Tab 切换（v2 扩展） ───
+function toast(msg, type='success') {
+  const d = document.createElement('div');
+  d.className = 'toast ' + type;
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 2500);
+}
+
+/* ─── Tabs ─── */
 document.querySelectorAll('.tab').forEach(t => {
   t.onclick = () => {
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(x => x.style.display = 'none');
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
-    document.getElementById('panel-' + t.dataset.tab).style.display = 'block';
-    const tab = t.dataset.tab;
-    if (tab === 'chunks') loadChunks(1);
-    if (tab === 'prompts') loadPrompts();
-    if (tab === 'docs') loadDocs();
-    if (tab === 'settings') loadBackendInfo();
+    const id = t.dataset.tab;
+    ['query','ingest','chunks','files','prompts'].forEach(k=>{
+      const el = document.getElementById('tab-' + k);
+      el.style.display = (k===id) ? '' : 'none';
+    });
+    if (id === 'query') loadCacheStats();
+    if (id === 'chunks') refreshChunks();
+    if (id === 'files') refreshFiles();
+    if (id === 'prompts') loadPrompt();
   };
 });
 
-// ─── 状态面板（v2 加 BM25/飞书） ───
-async function loadStatus() {
+/* ─── 初始化 ─── */
+(async function init() {
   try {
-    const h = await api('/health', { noKey: true });
-    document.getElementById('s-status').textContent = '✓ 在线';
-    document.getElementById('s-status').className = 'value ok';
-    document.getElementById('s-docs').textContent = h.docs_count;
-    document.getElementById('s-bm25').textContent = '✓ 就绪';
-    document.getElementById('s-bm25').className = 'value ok';
-    document.getElementById('s-feishu').textContent = h.feishu_configured ? '✓ 已配' : '✗ 未配';
-    document.getElementById('s-feishu').className = 'value '+(h.feishu_configured?'ok':'err');
-    document.getElementById('s-auth').textContent = h.api_key_mode.includes('无') ? '开发' : '鉴权';
-    document.getElementById('s-auth').className = 'value '+(h.api_key_mode.includes('无')?'warn':'ok');
-    // ── API Key 引导 banner + 自动填充注入值 ──
-    const banner = document.getElementById('need-key-banner');
-    if (h.need_api_key && !apiKey) {
-      if (banner) banner.style.display = 'block';
-      // 如果 HTML 里注入了 {{AUTO_API_KEY}}（生产模式后端注入），自动保存
-      const injected = document.getElementById('api-key-input')?.value || '';
-      if (injected && !apiKey) {
-        apiKey = injected;
-        localStorage.setItem('ltc_api_key', apiKey);
-        if (banner) banner.style.display = 'none';
-        toast('✓ 检测到生产 API Key 已自动填充，可以开始上传了！');
-      }
-    } else {
-      if (banner) banner.style.display = 'none';
-    }
-  } catch(e) {
-    document.getElementById('s-status').textContent = '✗ 离线';
-    document.getElementById('s-status').className = 'value err';
-    ['s-docs','s-bm25','s-feishu','s-auth'].forEach(id=>{
-      document.getElementById(id).textContent='-';
-      document.getElementById(id).className='value';
-    });
-  }
-}
-loadStatus(); setInterval(loadStatus, 15000);
+    // Status bar
+    const h = await api('/health').catch(()=>({docs:0,bm25_available:false}));
+    document.getElementById('stat-chunks').textContent = h.docs ?? 0;
+    document.getElementById('stat-vector').textContent = h.docs > 0 ? '就绪' : '空';
+    document.getElementById('stat-bm25').textContent = h.bm25_available ? '✅ 启用' : '⚠️ 未启用';
+  } catch(e) { console.warn('health:', e.message); }
 
-// ─── 切片策略下拉（v2 新增） ───
-async function loadStrategies() {
+  // 文件数
   try {
-    const s = await api('/strategies', { noKey: true });
-    const opts = Object.entries(s).map(([k,v])=>
-      `<option value="${k}">${v.name} · ${v.mode} · min${v.min_chunk_len}/max${v.max_chunk_len}</option>`
-    ).join('');
+    const kb = await api('/kb');
+    document.getElementById('stat-files').textContent = `${Object.keys(kb.files||{}).length} 个文件`;
+  } catch(e) {}
+
+  // 切片策略下拉
+  try {
+    const strat = await api('/strategies');
+    const opts = Object.entries(strat.strategies||{}).map(([k,v])=>
+      `<option value="${k}">${v.name||k} · ${v.mode||'para'}</option>`).join('');
     ['upload-strategy','text-strategy'].forEach(id=>{
       const el = document.getElementById(id);
-      if (el) { el.innerHTML = opts || '<option value="default">default</option>'; }
+      if (el) el.innerHTML = opts || '<option value="default">default</option>';
     });
-  } catch(e) { console.warn('loadStrategies fail', e); }
-}
-loadStrategies();
+  } catch(e) {}
 
-// ─── 上传 ───
-const dz = document.getElementById('dropzone');
-const fi = document.getElementById('file-input');
-dz.onclick = () => fi.click();
-dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
-dz.ondragleave = () => dz.classList.remove('drag');
-dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drag'); handleFiles(e.dataTransfer.files); };
-fi.onchange = e => handleFiles(e.target.files);
-
-async function handleFiles(files) {
-  const strat = document.getElementById('upload-strategy').value;
-  for (const f of files) {
-    const fd = new FormData();
-    fd.append('file', f);
-    fd.append('strategy', strat);
-    document.getElementById('upload-status').textContent = `上传中: ${f.name}...`;
-    try {
-      const h = new Headers();
-      if (apiKey) h.set('X-API-Key', apiKey);
-      const r = await fetch(API_BASE + '/ingest', { method: 'POST', headers: h, body: fd });
-      const data = await r.json();
-      if (r.ok) {
-        toast(`✓ ${f.name} → ${data.ingested} 切片 (${data.strategy})`);
-        document.getElementById('upload-status').textContent = `${f.name} ✓`;
-      } else {
-        toast(`✗ ${f.name}: ${data.detail || r.status}`, 'err');
-      }
-    } catch(e) { toast(`✗ ${f.name}: ${e.message}`, 'err'); }
-  }
-  loadStatus();
-}
-
-document.getElementById('btn-ingest-text').onclick = async () => {
-  const text = document.getElementById('text-input').value.trim();
-  const source = document.getElementById('text-source').value.trim() || 'inline';
-  const strat = document.getElementById('text-strategy').value;
-  if (!text) { toast('请先输入文本', 'err'); return; }
+  // 切片筛选下拉（V4 动态加载）
   try {
-    const r = await api('/ingest-text', { method:'POST', body:{ text, source, strategy: strat } });
-    toast(`✓ 入库 ${r.ingested} 切片 · 策略 ${r.strategy} · 总计 ${r.total}`);
-    document.getElementById('text-input').value = '';
-    loadStatus();
-  } catch(e) { toast('✗ '+e.message, 'err'); }
-};
+    const opt = await api('/chunks/options');
+    const srcSel = document.getElementById('chunk-filter-source');
+    srcSel.innerHTML = '<option value="">所有来源</option>' +
+      (opt.sources||[]).map(s=>`<option value="${s}">${s}</option>`).join('');
+    const stratSel = document.getElementById('chunk-filter-strategy');
+    stratSel.innerHTML = '<option value="">所有策略</option>' +
+      (opt.strategies||[]).map(s=>`<option value="${s}">${s}</option>`).join('');
+    const typeSel = document.getElementById('file-filter-type');
+    const types = new Set();
+    (opt.sources||[]).forEach(s=>{ const ext = '.' + s.split('.').pop(); if(ext!=='.'+s) types.add(ext); });
+    types.add('.inline'); types.add('.unknown');
+    typeSel.innerHTML = '<option value="">所有类型</option>' +
+      [...types].sort().map(t=>`<option value="${t}">${t}</option>`).join('');
+  } catch(e) {}
 
-// ─── Query（v2 加 BM25 开关） ───
-document.getElementById('btn-query').onclick = async () => {
-  const q = document.getElementById('query-input').value.trim();
-  const bm25 = document.getElementById('query-bm25').checked;
-  if (!q) { toast('请先输入问题', 'err'); return; }
-  document.getElementById('query-status').textContent = '查询中...';
-  document.getElementById('query-result').style.display = 'none';
+  // Prompt 下拉
   try {
-    const r = await api('/query', { method:'POST', body:{ question:q, use_bm25:bm25 } });
-    document.getElementById('query-result').style.display = 'block';
-    document.getElementById('query-answer').textContent = r.answer;
-    const sl = document.getElementById('query-sources');
-    sl.innerHTML = (r.sources||[]).map(s =>
-      `<div class="source-item"><span class="score">相似度 ${(s.score*100).toFixed(1)}%</span><span class="src">📄 ${s.source}</span><br>${s.text}</div>`
+    const ps = await api('/prompts');
+    const sel = document.getElementById('prompt-select');
+    sel.innerHTML = (ps.prompts||[]).map(p=>
+      `<option value="${p.name}" data-builtin="${p.builtin||false}">${p.name}${p.builtin?'（内置）':''}</option>`
     ).join('');
-    const hyb = r.hybrid || {};
-    document.getElementById('query-status').textContent =
-      `完成 · ${r.total_docs} 条切片 · LLM: ${r.llm_used} · BM25: ${hyb.use_bm25?'✓':'✗'}${hyb.bm25_available?'':'(未装)'}`;
-  } catch(e) { toast('✗ '+e.message, 'err'); document.getElementById('query-status').textContent=''; }
-};
+    sel.onchange = loadPrompt;
+    loadPrompt();
+  } catch(e) {}
 
-// ─── 🔪 切片管理（v2 新增） ───
-async function loadChunks(page=1) {
-  currentPage = page;
-  const kw = document.getElementById('chunk-keyword').value.trim();
+  // Enter 触发提问
+  document.getElementById('query-input').addEventListener('keydown', e=>{
+    if(e.key==='Enter') doQuery();
+  });
+
+  // 文件搜索实时过滤
+  document.getElementById('file-search').addEventListener('input', refreshFiles);
+  document.getElementById('file-filter-type').addEventListener('change', refreshFiles);
+  document.getElementById('file-filter-date').addEventListener('change', refreshFiles);
+})();
+
+/* ─── 问答 ─── */
+async function doQuery() {
+  const q = document.getElementById('query-input').value.trim();
+  if (!q) { toast('请输入问题', 'error'); return; }
+  const btn = document.getElementById('query-btn');
+  btn.disabled = true; btn.textContent = '⏳ 思考中...';
+  const start = Date.now();
+  let result;
+  try {
+    result = await api('/query', { method:'POST', body: JSON.stringify({ question:q }) });
+  } catch(e) {
+    toast('问答失败: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = '🚀 提问';
+    return;
+  }
+  const dt = Date.now() - start;
+  const hit = result.cache_hit === true;
+  const used = result.llm_used;
+  const box = document.getElementById('query-result');
+  box.innerHTML = `
+    <div class="result-box">
+      <div class="result-header">
+        ${hit ? '<span class="cache-tag">⚡ 缓存命中</span>' : ''}
+        <span class="llm-tag">${used}</span>
+        ${result.hybrid?.use_rerank ? '<span class="tag tag-blue">rerank</span>' : ''}
+        <span class="timer">⏱ ${dt}ms</span>
+      </div>
+      <div class="answer-text">${result.answer || '（知识库暂无回答）'}</div>
+      ${result.sources && result.sources.length ? `
+        <div class="sources-list">
+          <div style="font-size:12px;color:#6b7280;margin-top:4px">参考来源：</div>
+          ${result.sources.map(s=>`
+            <div class="source-item">
+              <span class="score">${(s.score*100).toFixed(0)}%</span>
+              <span>${s.text ? s.text.slice(0, 200) + (s.text.length>200?'…':'') : ''}</span>
+              <span class="src">📄 ${s.source}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+  btn.disabled = false; btn.textContent = '🚀 提问';
+  loadCacheStats();
+}
+
+/* ─── AnswerCache 管理 ─── */
+async function loadCacheStats() {
+  try {
+    const s = await api('/cache/stats');
+    document.getElementById('stat-cache').textContent = s.total_snapshots;
+    document.getElementById('stat-cache-hot').textContent = s.hot_count + ' 热';
+    const bar = document.getElementById('cache-bar');
+    if (s.total_snapshots > 0) {
+      bar.style.display = '';
+      document.getElementById('cache-snapshots').textContent = s.total_snapshots;
+      document.getElementById('cache-hot').textContent = s.hot_count;
+    } else {
+      bar.style.display = 'none';
+    }
+  } catch(e) {}
+}
+async function clearCache() {
+  if (!confirm('确定清空所有回答快照？')) return;
+  try { await api('/cache', {method:'DELETE'}); toast('✅ 缓存已清空'); loadCacheStats(); }
+  catch(e){ toast('清空失败', 'error'); }
+}
+
+/* ─── 上传 ─── */
+async function uploadFiles() {
+  const input = document.getElementById('file-input');
+  const strat = document.getElementById('upload-strategy').value;
+  if (!input.files.length) { toast('请先选择文件', 'error'); return; }
+  for (const f of input.files) {
+    const fd = new FormData();
+    fd.append('file', f); fd.append('strategy', strat);
+    try {
+      const r = await fetch(API + '/ingest?strategy=' + encodeURIComponent(strat), { method:'POST', body:fd });
+      const data = await r.json();
+      toast(`✓ ${f.name} → ${data.ingested} 切片 (${data.strategy})`);
+    } catch(e) { toast(`✗ ${f.name}: ${e.message}`, 'error'); }
+  }
+  refreshStatus();
+  refreshOptionFilters();
+}
+
+async function ingestText() {
+  const text = document.getElementById('text-input').value.trim();
+  const src = document.getElementById('text-source').value.trim() || 'inline';
+  const strat = document.getElementById('text-strategy').value;
+  if (!text) { toast('请输入文本', 'error'); return; }
+  try {
+    const r = await api('/ingest-text', {
+      method:'POST', body: JSON.stringify({ text, source: src, strategy: strat })
+    });
+    toast(`✓ 入库 ${r.ingested} 切片 · 总计 ${r.total}`);
+    document.getElementById('text-input').value = '';
+    refreshStatus();
+    refreshOptionFilters();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function refreshStatus() {
+  const h = await api('/health').catch(()=>({docs:0}));
+  document.getElementById('stat-chunks').textContent = h.docs ?? 0;
+  document.getElementById('stat-vector').textContent = h.docs > 0 ? '就绪' : '空';
+  try {
+    const kb = await api('/kb');
+    document.getElementById('stat-files').textContent = `${Object.keys(kb.files||{}).length} 个文件`;
+  } catch(e) {}
+}
+
+async function refreshOptionFilters() {
+  try {
+    const opt = await api('/chunks/options');
+    document.getElementById('chunk-filter-source').innerHTML = '<option value="">所有来源</option>' +
+      (opt.sources||[]).map(s=>`<option value="${s}">${s}</option>`).join('');
+    document.getElementById('chunk-filter-strategy').innerHTML = '<option value="">所有策略</option>' +
+      (opt.strategies||[]).map(s=>`<option value="${s}">${s}</option>`).join('');
+  } catch(e) {}
+}
+
+/* ─── 切片管理（V4 动态筛选 + 200字预览 + 批量） ─── */
+let currentPage = 1;
+const selectedChunks = new Set();
+
+async function refreshChunks() {
   const src = document.getElementById('chunk-filter-source').value;
   const strat = document.getElementById('chunk-filter-strategy').value;
-  const params = new URLSearchParams({ page, page_size: pageSize });
-  if (kw) params.set('keyword', kw);
-  if (src) params.set('source', src);
-  if (strat) params.set('strategy', strat);
+  const kw = document.getElementById('chunk-keyword').value.trim();
+  const url = `/chunks?page=${currentPage}&page_size=20` +
+    (src ? `&source=${encodeURIComponent(src)}` : '') +
+    (strat ? `&strategy=${encodeURIComponent(strat)}` : '') +
+    (kw ? `&keyword=${encodeURIComponent(kw)}` : '');
   try {
-    const r = await api('/chunks?'+params.toString());
-    document.getElementById('chunk-total').textContent = `共 ${r.total} 条 · 第 ${r.page}/${r.total_pages} 页`;
-    const list = document.getElementById('chunk-list');
-    if (!r.chunks.length) {
-      list.innerHTML = '<div class="empty">没有匹配的切片</div>';
-    } else {
-      list.innerHTML = r.chunks.map(c => `
-        <div class="chunk-item">
+    const r = await api(url);
+    renderChunkList(r);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function renderChunkList(r) {
+  const list = document.getElementById('chunk-list');
+  if (!r.chunks || r.chunks.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔪</div><div class="empty-title">没有切片</div><div class="empty-hint">去 📤 上传文档 入库吧</div></div>`;
+    document.getElementById('chunk-pagination').innerHTML = '';
+    document.getElementById('bulk-delete-btn').style.display = 'none';
+    document.getElementById('chunk-bulk-bar').style.display = 'none';
+    return;
+  }
+  list.innerHTML = r.chunks.map(c => {
+    const len = c.text.length;
+    const preview = c.text_preview || c.text;
+    const isTruncated = len > 200;
+    const time = c.created_at ? new Date(c.created_at).toLocaleString() : '';
+    return `
+      <div class="chunk-item">
+        <input type="checkbox" data-id="${c.id}" onchange="toggleChunkSelect('${c.id}', this.checked)">
+        <div class="chunk-main">
           <div class="chunk-meta">
             <span class="src">📄 ${c.source}</span>
-            <span class="strat">⚙️ ${c.strategy}</span>
-            <span>📏 ${c.length}字</span>
-            <span style="color:#64748b">#${c.id.slice(0,8)}…</span>
-            ${c.score !== null ? `<span style="color:#4ade80">相似度 ${(c.score*100).toFixed(1)}%</span>` : ''}
+            <span class="strat">${c.strategy}</span>
+            <span class="len-badge">${len}字</span>
+            <span class="time">${time}</span>
+            ${c.score != null ? `<span class="tag tag-green">相似度 ${(c.score*100).toFixed(0)}%</span>` : ''}
           </div>
-          <div class="chunk-text">${c.text_preview || c.text}</div>
-          <div class="chunk-actions">
-            <button class="btn sm ghost" onclick='openChunkEdit(${JSON.stringify(c).replace(/'/g,"&#39;")})'>✏️ 编辑</button>
-          </div>
+          <div class="chunk-text" title="${c.text.replace(/"/g,'&quot;')}">${preview}</div>
+          ${isTruncated ? `<div class="chunk-text more" onclick="toggleChunkFull('${c.id}')" data-full="false">展开全文</div>` : ''}
         </div>
-      `).join('');
-    }
-    renderPagination(r.total, r.total_pages, page);
-    populateChunkFilters();
-  } catch(e) {
-    document.getElementById('chunk-list').innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+        <div class="chunk-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openChunkModal('${c.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteChunk('${c.id}')">🗑</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 分页
+  const pag = document.getElementById('chunk-pagination');
+  const totalPages = r.total_pages || 1;
+  if (totalPages > 1) {
+    let html = `<button ${currentPage<=1?'disabled':''} onclick="goChunkPage(${currentPage-1})">‹</button>`;
+    const start = Math.max(1, currentPage-2), end = Math.min(totalPages, currentPage+2);
+    for (let i=start;i<=end;i++) html += `<button class="${i===currentPage?'active':''}" onclick="goChunkPage(${i})">${i}</button>`;
+    html += `<button ${currentPage>=totalPages?'disabled':''} onclick="goChunkPage(${currentPage+1})">›</button>`;
+    html += `<span style="color:#6b7280;margin-left:8px">共 ${r.total} 条</span>`;
+    pag.innerHTML = html;
+  } else {
+    pag.innerHTML = `<span style="color:#6b7280">共 ${r.total} 条</span>`;
   }
 }
 
-function renderPagination(total, totalPages, page) {
-  const pg = document.getElementById('chunk-pagination');
-  if (totalPages <= 1) { pg.innerHTML = ''; return; }
-  let html = `<button ${page===1?'disabled':''} onclick="loadChunks(${page-1})">‹</button>`;
-  const start = Math.max(1, page-2), end = Math.min(totalPages, start+4);
-  for (let i=start; i<=end; i++) {
-    html += `<button class="${i===page?'active':''}" onclick="loadChunks(${i})">${i}</button>`;
+function goChunkPage(p) { currentPage = p; refreshChunks(); }
+
+function toggleChunkSelect(id, checked) {
+  if (checked) selectedChunks.add(id); else selectedChunks.delete(id);
+  const bar = document.getElementById('chunk-bulk-bar');
+  const btn = document.getElementById('bulk-delete-btn');
+  bar.style.display = selectedChunks.size > 0 ? '' : 'none';
+  btn.style.display = selectedChunks.size > 0 ? '' : 'none';
+  document.getElementById('chunk-bulk-count').textContent = selectedChunks.size;
+}
+
+async function bulkDeleteChunks() {
+  if (selectedChunks.size === 0) return;
+  if (!confirm(`确定删除选中的 ${selectedChunks.size} 条切片？`)) return;
+  for (const id of selectedChunks) {
+    try { await api('/chunks/' + id, { method:'DELETE' }); } catch(e) {}
   }
-  html += `<button ${page===totalPages?'disabled':''} onclick="loadChunks(${page+1})">›</button>`;
-  pg.innerHTML = html;
+  selectedChunks.clear();
+  toast(`✓ 已删除`);
+  refreshChunks(); refreshStatus();
 }
 
-async function populateChunkFilters() {
-  try {
-    const r = await api('/kb', { noKey: true });
-    const srcSel = document.getElementById('chunk-filter-source');
-    const curVal = srcSel.value;
-    srcSel.innerHTML = '<option value="">所有来源</option>' +
-      Object.keys(r.sources).map(s => `<option value="${s}">${s}</option>`).join('');
-    srcSel.value = curVal;
-    // strategies
-    const s = await api('/strategies', { noKey: true });
-    const stratSel = document.getElementById('chunk-filter-strategy');
-    const curStrat = stratSel.value;
-    stratSel.innerHTML = '<option value="">所有策略</option>' +
-      Object.entries(s).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
-    stratSel.value = curStrat;
-  } catch(e){}
-}
-
-document.getElementById('chunk-btn-search').onclick = () => loadChunks(1);
-document.getElementById('chunk-keyword').addEventListener('keydown', e => { if (e.key==='Enter') loadChunks(1); });
-document.getElementById('chunk-filter-source').onchange = () => loadChunks(1);
-document.getElementById('chunk-filter-strategy').onchange = () => loadChunks(1);
-
-// 编辑弹窗
-function openChunkEdit(c) {
-  editingChunkId = c.id;
-  document.getElementById('chunk-modal-id').textContent = `ID: ${c.id}`;
-  document.getElementById('chunk-modal-source').value = c.source;
-  document.getElementById('chunk-modal-strategy').value = c.strategy;
-  document.getElementById('chunk-modal-text').value = c.text;
-  document.getElementById('chunk-modal').classList.add('show');
-}
-document.getElementById('chunk-modal-cancel').onclick = () => {
-  document.getElementById('chunk-modal').classList.remove('show'); editingChunkId=null;
-};
-document.getElementById('chunk-modal').onclick = e => {
-  if (e.target.id === 'chunk-modal') document.getElementById('chunk-modal').classList.remove('show');
-};
-document.getElementById('chunk-modal-save').onclick = async () => {
-  if (!editingChunkId) return;
-  const text = document.getElementById('chunk-modal-text').value.trim();
-  const source = document.getElementById('chunk-modal-source').value.trim();
-  if (text.length < 5) { toast('文本太短（最少5字）','err'); return; }
-  try {
-    await api('/chunks/'+editingChunkId, {
-      method:'PATCH',
-      body:{ text, source }
-    });
-    toast('✓ 已更新，embedding 已重算');
-    document.getElementById('chunk-modal').classList.remove('show');
-    loadChunks(currentPage); loadStatus();
-  } catch(e) { toast('✗ '+e.message, 'err'); }
-};
-document.getElementById('chunk-modal-delete').onclick = async () => {
-  if (!editingChunkId) return;
+async function deleteChunk(id) {
   if (!confirm('确定删除这条切片？')) return;
-  try {
-    await api('/kb/'+editingChunkId, { method:'DELETE' });
-    toast('✓ 已删除');
-    document.getElementById('chunk-modal').classList.remove('show');
-    loadChunks(Math.max(1,currentPage)); loadStatus();
-  } catch(e) { toast('✗ '+e.message, 'err'); }
-};
-
-// ─── 📝 Prompt 模板（v2 新增） ───
-async function loadPrompts() {
-  try {
-    const list = await api('/prompts', { noKey: true });
-    const sel = document.getElementById('prompt-select');
-    sel.innerHTML = list.map(p =>
-      `<option value="${p.name}">${p.name}${p.has_file?' 📄':''}${p.has_builtin?' 🧱':''}</option>`
-    ).join('');
-    await loadPromptContent(list[0].name);
-  } catch(e) { toast('✗ 加载失败 '+e.message, 'err'); }
+  try { await api('/chunks/' + id, { method:'DELETE' }); toast('✓ 已删除'); refreshChunks(); refreshStatus(); }
+  catch(e) { toast(e.message, 'error'); }
 }
 
-async function loadPromptContent(name) {
-  try {
-    const r = await api('/prompts/'+name, { noKey: true });
-    document.getElementById('prompt-editor').value = r.content;
-    document.getElementById('prompt-meta').innerHTML =
-      `📄 文件: <code>prompts/${name}.txt</code> | ` +
-      `${r.has_file ? '<span style="color:#4ade80">✓ 有文件</span>' : '<span style="color:#64748b">（无文件，使用内置）</span>'} | ` +
-      `${r.has_builtin ? '<span style="color:#fbbf24">🧱 内置兜底可用</span>' : ''}`;
-    document.getElementById('prompt-status').textContent = '';
-  } catch(e) { toast('✗ '+e.message, 'err'); }
+function toggleChunkFull(id) {
+  // 简化：重新加载全部
+  refreshChunks();
 }
 
-document.getElementById('prompt-select').onchange = e => loadPromptContent(e.target.value);
-document.getElementById('prompt-btn-reload').onclick = () => loadPromptContent(document.getElementById('prompt-select').value);
-document.getElementById('prompt-btn-save').onclick = async () => {
-  const name = document.getElementById('prompt-select').value;
-  const content = document.getElementById('prompt-editor').value;
-  if (!content.trim()) { toast('模板内容不能为空','err'); return; }
+/* ─── 编辑切片 ─── */
+async function openChunkModal(id) {
   try {
-    await api('/prompts/'+name, { method:'PUT', body:{ content } });
-    document.getElementById('prompt-status').textContent = '✓ 已保存，热生效';
-    toast('✓ Prompt 已保存');
-    loadPromptContent(name);
-  } catch(e) { toast('✗ '+e.message, 'err'); }
-};
-document.getElementById('prompt-btn-reset').onclick = async () => {
-  const name = document.getElementById('prompt-select').value;
-  if (!confirm(`确定删除 prompts/${name}.txt 恢复内置？`)) return;
-  try {
-    await api('/prompts/'+name, { method:'DELETE' });
-    toast('✓ 已恢复内置');
-    loadPromptContent(name);
-  } catch(e) { toast('✗ '+e.message, 'err'); }
-};
+    const r = await api('/chunks/' + id);
+    document.getElementById('chunk-modal-id').value = id;
+    document.getElementById('chunk-modal-source').value = r.metadata.source || '';
+    document.getElementById('chunk-modal-strategy').value = r.metadata.strategy || '';
+    document.getElementById('chunk-modal-text').value = r.text;
+    document.getElementById('chunk-modal').style.display = '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+function closeModal() { document.getElementById('chunk-modal').style.display = 'none'; }
 
-// ─── Docs ───
-async function loadDocs() {
+async function saveChunkEdit() {
+  const id = document.getElementById('chunk-modal-id').value;
+  const body = {
+    text: document.getElementById('chunk-modal-text').value,
+    source: document.getElementById('chunk-modal-source').value,
+  };
+  try { await api('/chunks/' + id, { method:'PATCH', body: JSON.stringify(body) }); toast('✓ 已保存'); closeModal(); refreshChunks(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+/* ─── 文件管理（V4 新增） ─── */
+async function refreshFiles() {
+  const container = document.getElementById('files-container');
   try {
-    const r = await api('/kb');
-    const tags = Object.entries(r.sources);
-    if (!tags.length) {
-      document.getElementById('docs-content').innerHTML = '<div class="empty">知识库为空 · 去「上传文档」灌点内容吧</div>';
-      document.getElementById('docs-actions').style.display = 'none';
-    } else {
-      document.getElementById('docs-content').innerHTML =
-        `<p style="color:#94a3b8;font-size:13px;margin-bottom:12px">共 ${r.total_chunks} 条切片 · ${tags.length} 个来源</p>` +
-        tags.map(([src,n])=>`<span class="source-tag">📄 ${src}<span class="count">${n}</span></span>`).join('');
-      document.getElementById('docs-actions').style.display = 'flex';
+    const kb = await api('/kb');
+    const search = document.getElementById('file-search').value.trim().toLowerCase();
+    const typeFilter = document.getElementById('file-filter-type').value;
+    const dateFilter = document.getElementById('file-filter-date').value;
+    const now = Date.now();
+
+    // 收集所有文件 + 过滤
+    let files = Object.values(kb.files || {});
+    if (search) files = files.filter(f => f.source.toLowerCase().includes(search));
+    if (typeFilter) files = files.filter(f => f.file_type === typeFilter);
+    if (dateFilter) {
+      const ms = { today: 1, week: 7, month: 30 }[dateFilter] * 86400000;
+      files = files.filter(f => {
+        if (!f.created_at) return false;
+        return now - new Date(f.created_at).getTime() < ms;
+      });
     }
-  } catch(e) { document.getElementById('docs-content').innerHTML = `<div class="empty">加载失败: ${e.message}</div>`; }
-}
-document.getElementById('btn-clear-all').onclick = async () => {
-  if (!confirm('确定清空整个知识库？不可恢复！')) return;
-  try { await api('/kb', { method:'DELETE' }); toast('✓ 已清空'); loadDocs(); loadStatus(); }
-  catch(e) { toast('✗ '+e.message, 'err'); }
-};
+    // 按类型分组
+    const groups = {};
+    for (const f of files) groups[f.file_type || '.unknown'] = groups[f.file_type] || [];
+    for (const f of files) groups[f.file_type].push(f);
 
-// ─── Settings ───
-async function loadBackendInfo() {
+    // 渲染
+    if (files.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-title">没有匹配的文件</div><div class="empty-hint">试试换个筛选条件</div></div>`;
+      return;
+    }
+    const typeIcon = t => ({'.md':'📝','.txt':'📄','.pdf':'📊','.html':'🌐','.json':'📋','.inline':'✏️'}[t] || '📦');
+    const typeLabel = t => ({'.md':'Markdown','.txt':'文本','.pdf':'PDF','.html':'HTML','.json':'JSON','.inline':'内联'}[t] || t.toUpperCase().slice(1));
+    const fmtSize = n => { if(n<1024) return n+'字'; if(n<1048576) return (n/1024).toFixed(1)+'KB'; return (n/1048576).toFixed(1)+'MB'; };
+    const fmtDate = d => d ? new Date(d).toLocaleDateString() : '未知';
+
+    container.innerHTML = Object.entries(groups).map(([type, fs]) => `
+      <div class="file-group">
+        <div class="file-group-title">
+          <span>${typeIcon(type)} ${typeLabel(type)}</span>
+          <span class="count">${fs.length} 个文件</span>
+        </div>
+        <div class="file-grid">
+          ${fs.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).map(f=>`
+            <div class="file-card">
+              <div class="file-icon">${typeIcon(f.file_type)}</div>
+              <div class="file-name" title="${f.source}">${f.source}</div>
+              <div class="file-meta">
+                <span><span class="chunks">${f.chunks}</span> 切片</span>
+                <span class="sep">·</span>
+                <span>${fmtSize(f.total_chars||0)}</span>
+                <span class="sep">·</span>
+                <span>${fmtDate(f.created_at)}</span>
+              </div>
+              <div class="file-actions">
+                <button class="btn btn-danger btn-sm" onclick="deleteSource('${f.source.replace(/'/g,"\\'")}')">🗑 删除</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">加载失败</div><div class="empty-hint">${e.message}</div></div>`;
+  }
+}
+
+async function deleteSource(source) {
+  if (!confirm(`确定删除来源 "${source}" 的所有切片？`)) return;
   try {
-    const h = await api('/health', { noKey: true });
-    document.getElementById('backend-info').innerHTML =
-      `<div>版本: <b>${h.version}</b></div>` +
-      `<div>Embedding: <b>${h.embedding}</b></div>` +
-      `<div>API Key 模式: <b>${h.api_key_mode}</b></div>` +
-      `<div>飞书配置: <b style="color:${h.feishu_configured?'#4ade80':'#f87171'}">${h.feishu_configured?'✓ 已配置':'✗ 未配置'}</b></div>` +
-      `<div>向量总数: <b>${h.docs_count}</b></div>`;
-  } catch(e) { document.getElementById('backend-info').textContent = '加载失败: '+e.message; }
+    // 构造 ?source=xxx 的方式——目前 /kb DELETE 只支持清空或单 chunk
+    // 我们手动遍历 ids_by_source
+    const kb = await api('/kb');
+    const ids = (kb.ids_by_source || {})[source] || [];
+    for (const id of ids) {
+      try { await api('/chunks/' + id, { method:'DELETE' }); } catch(e) {}
+    }
+    toast(`✓ 已删除 ${ids.length} 条切片`);
+    refreshFiles(); refreshStatus(); refreshOptionFilters();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
-document.getElementById('api-key-input').value = apiKey;
-document.getElementById('btn-save-key').onclick = () => {
-  apiKey = document.getElementById('api-key-input').value.trim();
-  localStorage.setItem('ltc_api_key', apiKey);
-  toast(apiKey ? '✓ API Key 已保存' : '✓ 已清空');
-};
+/* ─── Prompt 设置 ─── */
+async function loadPrompt() {
+  const sel = document.getElementById('prompt-select');
+  const name = sel.value;
+  try {
+    const r = await api('/prompts/' + name);
+    document.getElementById('prompt-content').value = r.content || '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function savePrompt() {
+  const sel = document.getElementById('prompt-select');
+  const name = sel.value;
+  const content = document.getElementById('prompt-content').value;
+  try {
+    await api('/prompts/' + name, { method:'PUT', body: JSON.stringify({ content }) });
+    toast('✓ Prompt 已保存');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// 筛选联动
+['chunk-filter-source','chunk-filter-strategy'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => { currentPage = 1; refreshChunks(); });
+});
+document.getElementById('chunk-keyword').addEventListener('keydown', e=>{ if(e.key==='Enter') { currentPage=1; refreshChunks(); }});
+
+console.log('[Portal V4] ✅ 已加载');
 </script>
 </body>
 </html>
