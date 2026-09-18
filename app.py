@@ -11,6 +11,7 @@ LTC 销售话术与招投标 RAG 问答机器人 · v3.0（CloudBase 免费版�
 """
 import os, uuid, json, re, math, tempfile, hashlib, base64
 from pathlib import Path
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -243,13 +244,21 @@ class SimpleVectorStore:
         if metadatas is None:
             metadatas = [{} for _ in documents]
 
-        # 追加 metadata
+        # 追加 metadata（V4 增强：created_at / file_type / file_size）
         for i, doc_id in enumerate(ids):
+            created_at = metadatas[i].get("created_at") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            source_val = metadatas[i].get("source", "unknown")
+            file_type = metadatas[i].get("file_type") or (
+                os.path.splitext(source_val)[1].lower() or ".inline"
+            )
             self.metadata.append({
                 "id": doc_id,
                 "text": documents[i],
-                "source": metadatas[i].get("source", "unknown"),
+                "source": source_val,
                 "strategy": metadatas[i].get("strategy", "default"),
+                "created_at": created_at,
+                "file_type": file_type,
+                "file_size": len(documents[i]),
             })
 
         # 重建（新文档可能引入新词 → 词表变化 → 全量重算）
@@ -315,7 +324,13 @@ class SimpleVectorStore:
         # 构造返回格式
         ret = {"ids": [md["id"] for md in results]}
         if include is None or "metadatas" in include:
-            ret["metadatas"] = [{"source": md["source"], "strategy": md["strategy"]} for md in results]
+            ret["metadatas"] = [{
+                "source": md.get("source", "unknown"),
+                "strategy": md.get("strategy", "default"),
+                "created_at": md.get("created_at"),
+                "file_type": md.get("file_type"),
+                "file_size": md.get("file_size"),
+            } for md in results]
         if include is None or "documents" in include:
             ret["documents"] = [md["text"] for md in results]
         # ChromaDB get 不返回 distances
@@ -328,8 +343,9 @@ class SimpleVectorStore:
         where: dict | None = None,
         include: list[str] | None = None,
         use_bm25: bool = True,
+        use_rerank: bool = True,
     ) -> dict:
-        """混合检索 —— 向量 + BM25 + RRF 融合，返回格式对齐 ChromaDB Collection.query()"""
+        """混合检索 —— 向量 + BM25 + RRF 融合 + cosine 重排（V4 增强）"""
         if not self.metadata or self.vectors is None or len(self.vectors) == 0:
             empty = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
             return empty
@@ -384,12 +400,33 @@ class SimpleVectorStore:
             for rank, (doc_idx, _) in enumerate(bm25_top):
                 fused_ranks[doc_idx] = fused_ranks.get(doc_idx, 0) + 1 / (60 + rank)
 
-            final_idx = sorted(fused_ranks.keys(), key=lambda i: -fused_ranks[i])[:n]
+            # ── 4. V4 新增：cosine 重排（RRF 结果 → query 向量点积重排 → 取 top n）──
+            if use_rerank:
+                rerank_pool = sorted(fused_ranks.keys(), key=lambda i: -fused_ranks[i])[:pool_size]
+                rerank_scores = []
+                for doc_idx in rerank_pool:
+                    chunk_vec = self.vectors[doc_idx]
+                    norm = np.linalg.norm(chunk_vec)
+                    if norm > 0:
+                        score = float(chunk_vec @ q_vec / norm)
+                    else:
+                        score = 0.0
+                    rerank_scores.append((doc_idx, score))
+                rerank_scores.sort(key=lambda x: -x[1])
+                final_idx = [i for i, _ in rerank_scores[:n]]
+            else:
+                final_idx = sorted(fused_ranks.keys(), key=lambda i: -fused_ranks[i])[:n]
 
             # 构造返回
             ids = [self.metadata[i]["id"] for i in final_idx]
             docs = [self.metadata[i]["text"] for i in final_idx]
-            metas = [{"source": self.metadata[i]["source"], "strategy": self.metadata[i]["strategy"]} for i in final_idx]
+            metas = [{
+                "source": self.metadata[i].get("source", "unknown"),
+                "strategy": self.metadata[i].get("strategy", "default"),
+                "created_at": self.metadata[i].get("created_at"),
+                "file_type": self.metadata[i].get("file_type"),
+                "file_size": self.metadata[i].get("file_size"),
+            } for i in final_idx]
             # distance = 1 - cosine_similarity（ChromaDB 习惯：小=更相似）
             distances = [float(1 - vec_sims[i]) if vec_sims[i] > -np.inf else 1.0 for i in final_idx]
 
@@ -443,14 +480,15 @@ def _bm25_score(query_tokens: list, corpus_tokens: list, k1: float = 1.5, b: flo
 
 
 # ── 混合检索 + RRF（供 /query 端点使用）──
-def _hybrid_search(query: str, vector_store: SimpleVectorStore, top_k: int = 5, use_bm25: bool = True):
-    """混合检索 —— 返回 (chunks, distances, metadatas)"""
+def _hybrid_search(query: str, vector_store: SimpleVectorStore, top_k: int = 5, use_bm25: bool = True, use_rerank: bool = True):
+    """混合检索 —— V4 增强：RRF + cosine rerank"""
     vector_k = top_k * 3 if use_bm25 else top_k
     results = vector_store.query(
         query_texts=[query],
         n_results=vector_k,
         include=["documents", "metadatas", "distances"],
         use_bm25=use_bm25,
+        use_rerank=use_rerank,
     )
     chunks = results["documents"][0] if results["documents"] else []
     distances = results["distances"][0] if results["distances"] else []
@@ -460,12 +498,88 @@ def _hybrid_search(query: str, vector_store: SimpleVectorStore, top_k: int = 5, 
 
 
 # ═══════════════════════════════════════════════════════════════════
+# ③-1 V4 新增：AnswerCache 回答快照（高频问题省 100% token）
+# ═══════════════════════════════════════════════════════════════════
+class AnswerCache:
+    """基于 question 哈希的回答快照 · 持久化到 COS 挂载路径"""
+
+    MAX_ENTRIES = 1000          # 上限，超过 LRU 淘汰
+    PROMOTE_THRESHOLD = 2       # hit_count >= 2 才返回缓存（避免单次访问浪费新鲜度）
+
+    def __init__(self, path: str):
+        self.path = Path(path) / "answer_cache.json"
+        self.data: dict[str, dict] = {}
+        self._load()
+
+    def _load(self):
+        if self.path.exists():
+            try:
+                self.data = json.loads(self.path.read_text())
+            except Exception:
+                self.data = {}
+
+    def _save(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(self.data, ensure_ascii=False, indent=2))
+
+    @staticmethod
+    def _key(question: str) -> str:
+        return hashlib.sha256(question.strip().lower().encode()).hexdigest()[:16]
+
+    def get(self, question: str) -> dict | None:
+        k = self._key(question)
+        entry = self.data.get(k)
+        if not entry:
+            return None
+        entry["hit_count"] = entry.get("hit_count", 0) + 1
+        self._save()
+        if entry["hit_count"] < self.PROMOTE_THRESHOLD:
+            return None  # 还没高频到值得返回缓存
+        return entry
+
+    def set(self, question: str, answer: str, sources: list, llm_used: str):
+        k = self._key(question)
+        if k not in self.data:
+            self.data[k] = {
+                "question": question,
+                "answer": answer,
+                "sources": sources,
+                "llm_used": llm_used,
+                "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "hit_count": 0,
+            }
+        # LRU 淘汰（保留 hit_count 最高的）
+        if len(self.data) > self.MAX_ENTRIES:
+            sorted_keys = sorted(self.data.keys(), key=lambda h: -self.data[h].get("hit_count", 0))
+            for old_k in sorted_keys[self.MAX_ENTRIES:]:
+                del self.data[old_k]
+        self._save()
+
+    def stats(self) -> dict:
+        total = len(self.data)
+        hot = sum(1 for v in self.data.values() if v.get("hit_count", 0) >= self.PROMOTE_THRESHOLD)
+        return {"total_snapshots": total, "hot_count": hot, "max_entries": self.MAX_ENTRIES}
+
+    def delete(self, question: str) -> bool:
+        k = self._key(question)
+        if k in self.data:
+            del self.data[k]
+            self._save()
+            return True
+        return False
+
+
+# ═══════════════════════════════════════════════════════════════════
 # ③ SimpleVectorStore 初始化
 # ═══════════════════════════════════════════════════════════════════
 _default = str(Path(__file__).parent / "chroma_data")
 CHROMA_PATH = os.environ.get("CHROMA_PATH") or ("/mnt/chroma" if os.path.isdir("/mnt/chroma") else _default)
 VECTOR_STORE = SimpleVectorStore(path=CHROMA_PATH)
 print(f"[init] ✅ SimpleVectorStore ready · path={CHROMA_PATH} · docs={VECTOR_STORE.count()}")
+
+# V4 新增：AnswerCache 初始化
+ANSWER_CACHE = AnswerCache(CHROMA_PATH)
+print(f"[init] ✅ AnswerCache ready · snapshots={len(ANSWER_CACHE.data)} · path={ANSWER_CACHE.path}")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -710,22 +824,20 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 PROMPTS_DIR.mkdir(exist_ok=True)
 
 _BUILTIN_PROMPTS = {
-    "fabe": """你是一个专业的 B2B 销售话术专家。请基于以下参考内容，按 FABE 法则组织一段完整的销售回答。
+    "fabe": """你是专业 B2B 销售话术专家。基于参考内容，按 FABE 法则回答客户问题。
 
 规则：
-1. 如果参考片段里没有足够信息回答，诚实说"知识库暂未收录相关内容"，不要编造
-2. Feature 客观描述产品/服务的特征
-3. Advantage 说明这个特征带来的优势（和竞品/旧方案比）
-4. Benefit 一定要从**客户视角**描述利益（省多少钱/多少时间/降低什么风险）
-5. Evidence 引用认证/案例/数据作为佐证
-6. 回答用中文，口语化，符合销售对客户说话的风格，200-400字
+1. 参考不足 → 直接说「知识库暂未收录相关内容」，不要编造
+2. Feature→Advantage→Benefit→Evidence 按 FABE 结构组织，但不要显式标注段落名
+3. Benefit 从客户视角（省多少钱/多少时间/降低什么风险）
+4. 回答 150-250 字，口语化
 
 客户问题：{question}
 
 参考内容：
 {context}
 
-请输出完整的 FABE 话术：""",
+回答：""",
 }
 
 def _get_prompt(name: str, **kwargs) -> str:
@@ -820,19 +932,52 @@ def health():
 
 @app.get("/kb")
 async def list_knowledge(_: bool = Depends(verify_api_key)):
-    """列出所有已入库文档（按 source 分组）"""
+    """列出所有已入库文档 —— V4 增强：按 file_type 分组 + 完整文件视图"""
     meta = VECTOR_STORE.metadata
-    sources = {}
+    sources = {}       # source -> chunk count
     ids_by_source = {}
+    files = {}         # source -> {chunks, file_type, created_at, total_chars}
+
     for md in meta:
         src = md.get("source", "unknown")
+        ft = md.get("file_type", ".inline")
+        ca = md.get("created_at")
+        sz = md.get("file_size", len(md.get("text", "")))
         sources[src] = sources.get(src, 0) + 1
         ids_by_source.setdefault(src, []).append(md["id"])
 
+        if src not in files:
+            files[src] = {
+                "source": src,
+                "file_type": ft,
+                "created_at": ca,
+                "chunks": 1,
+                "total_chars": sz,
+            }
+        else:
+            f = files[src]
+            f["chunks"] += 1
+            f["total_chars"] += sz
+            # 保持最早的 created_at
+            if ca and (not f["created_at"] or ca < f["created_at"]):
+                f["created_at"] = ca
+
+    # 按 file_type 分组
+    by_type = {}
+    for src, info in files.items():
+        ft = info["file_type"]
+        by_type.setdefault(ft, []).append(info)
+    # 每组按 created_at 倒序
+    for ft in by_type:
+        by_type[ft].sort(key=lambda x: x.get("created_at") or "", reverse=True)
+
     return {
         "total_chunks": VECTOR_STORE.count(),
+        "total_files": len(files),
         "sources": sources,
         "ids_by_source": ids_by_source,
+        "files": files,
+        "by_type": by_type,
     }
 
 @app.delete("/kb/{chunk_id}")
@@ -898,6 +1043,32 @@ async def ingest_text(
 
 # ── 切片管理 ──
 
+# ── V4 A5：切片筛选动态选项 API ──
+@app.get("/chunks/options")
+def get_chunk_options():
+    """返回当前 metadata 中所有 source 和 strategy 的去重集合 —— 供前端筛选下拉框使用"""
+    sources = sorted(set(md.get("source", "unknown") for md in VECTOR_STORE.metadata))
+    strategies = sorted(set(md.get("strategy", "default") for md in VECTOR_STORE.metadata))
+    return JSONResponse({"sources": sources, "strategies": strategies})
+
+# ── V4 A3：AnswerCache 管理端点 ──
+@app.get("/cache")
+def list_cache(_: bool = Depends(verify_api_key)):
+    """列出所有 answer_cache 快照"""
+    return JSONResponse(list(ANSWER_CACHE.data.values()))
+
+@app.get("/cache/stats")
+def cache_stats(_: bool = Depends(verify_api_key)):
+    """answer_cache 命中率统计"""
+    return JSONResponse(ANSWER_CACHE.stats())
+
+@app.delete("/cache")
+def clear_cache(_: bool = Depends(verify_api_key)):
+    """清空 answer_cache（全部删除）"""
+    ANSWER_CACHE.data.clear()
+    ANSWER_CACHE._save()
+    return {"ok": True, "cleared": True}
+
 @app.get("/chunks")
 def list_chunks(
     page: int = Query(1, ge=1, description="第几页"),
@@ -932,13 +1103,17 @@ def list_chunks(
         total = len(chunks)
         chunks_data = []
         for i, (c, d, m) in enumerate(zip(chunks, distances, metadatas)):
+            mm = m or {}
             chunks_data.append({
                 "id": f"kw_{i}",
                 "text": c,
-                "text_preview": (c[:80] + "…") if len(c) > 80 else c,
+                "text_preview": (c[:200] + "…") if len(c) > 200 else c,
                 "length": len(c),
-                "source": (m or {}).get("source", "unknown"),
-                "strategy": (m or {}).get("strategy", "unknown"),
+                "source": mm.get("source", "unknown"),
+                "strategy": mm.get("strategy", "unknown"),
+                "created_at": mm.get("created_at"),
+                "file_type": mm.get("file_type"),
+                "file_size": mm.get("file_size"),
                 "score": round(1 - d, 4),
             })
     else:
@@ -952,14 +1127,17 @@ def list_chunks(
         chunks_data = []
         for i, cid in enumerate(ids):
             text = docs[i] if docs else ""
-            m = metas[i] if metas else {}
+            mm = metas[i] if metas else {}
             chunks_data.append({
                 "id": cid,
                 "text": text,
-                "text_preview": (text[:80] + "…") if len(text) > 80 else text,
+                "text_preview": (text[:200] + "…") if len(text) > 200 else text,
                 "length": len(text),
-                "source": (m or {}).get("source", "unknown"),
-                "strategy": (m or {}).get("strategy", "unknown"),
+                "source": mm.get("source", "unknown"),
+                "strategy": mm.get("strategy", "unknown"),
+                "created_at": mm.get("created_at"),
+                "file_type": mm.get("file_type"),
+                "file_size": mm.get("file_size"),
                 "score": None,
             })
 
@@ -1032,36 +1210,56 @@ def delete_single_chunk(chunk_id: str, _: bool = Depends(verify_api_key)):
 
 # ── RAG 核心逻辑（独立函数，可被路由层和 webhook 直接调用） ──
 
-def _do_rag(question: str, top_k: int = 5, use_bm25: bool = True) -> dict:
-    """RAG + LLM FABE 问答 —— 纯函数，不做鉴权，返回结构化 dict"""
+def _do_rag(question: str, top_k: int = 5, use_bm25: bool = True, use_rerank: bool = True) -> dict:
+    """RAG + LLM FABE 问答 —— V4 增强：缓存 + 瘦身 prompt + rerank + 高效 context"""
     q = question.strip()
     if not q:
         raise ValueError("question required")
 
-    chunks, distances, metadatas_list = _hybrid_search(q, VECTOR_STORE, top_k=top_k, use_bm25=use_bm25)
+    # ★ V4 A3：先查 answer_cache —— 高频问题直接返回，省 100% token
+    cached = ANSWER_CACHE.get(q)
+    if cached:
+        return {
+            "answer": cached["answer"],
+            "sources": cached["sources"],
+            "llm_used": "cache",
+            "total_docs": VECTOR_STORE.count(),
+            "hybrid": {"bm25_available": JIEBA_AVAILABLE, "use_bm25": use_bm25, "use_rerank": use_rerank},
+            "cache_hit": True,
+            "cache_stats": ANSWER_CACHE.stats(),
+        }
+
+    # ★ V4 A2：hybrid_search 现在自动带 cosine rerank
+    chunks, distances, metadatas_list = _hybrid_search(q, VECTOR_STORE, top_k=top_k, use_bm25=use_bm25, use_rerank=use_rerank)
 
     if not chunks:
         return {
             "answer": "⚠️ 知识库为空，请先上传产品文档。",
             "sources": [],
             "total_docs": 0,
-            "hybrid": {"bm25_available": JIEBA_AVAILABLE, "use_bm25": False},
+            "hybrid": {"bm25_available": JIEBA_AVAILABLE, "use_bm25": False, "use_rerank": use_rerank},
             "llm_used": "none",
         }
 
-    top3 = list(zip(chunks[:3], distances[:3], metadatas_list[:3]))
+    # ★ V4 A4：top3 → top2（rerank 后更精准）+ 每条截断到 300 字 → 省 ~50% input token
+    top2 = list(zip(chunks[:2], distances[:2], metadatas_list[:2]))
     context_block = "\n".join(
-        f"[{i+1}] (相似度 {1-d:.3f}, 来源 {(m or {}).get('source','?')}) {c}"
-        for i, (c, d, m) in enumerate(top3)
+        f"[{i+1}] 来源 {(m or {}).get('source','?')}: {(c[:300] + '...') if len(c) > 300 else c}"
+        for i, (c, d, m) in enumerate(top2)
     )
 
+    # ★ V4 A4：瘦身后的 prompt —— 不再让 LLM 写 4 段标题
     fabe_prompt = _get_prompt("fabe", question=q, context=context_block)
     llm_reply, llm_backend = call_llm(fabe_prompt)
 
-    if llm_backend == "template-fallback":
-        answer = f"**问题**：{q}\n\n**📎 参考片段**：\n{context_block}\n\n{llm_reply}"
-    else:
-        answer = f"**问题**：{q}\n\n**🤖 AI 话术（FABE · {llm_backend}）**：\n{llm_reply}\n\n**📎 参考片段**：\n{context_block}"
+    # ★ V4 A4：answer 拼接去冗余 —— 纯文本返回，sources 结构化给前端
+    answer = llm_reply
+
+    # ★ V4 A3：写入 answer_cache（首次访问存，但 hit_count=0 → 下次再查才返回）
+    ANSWER_CACHE.set(q, llm_reply, [
+        {"text": c[:200], "source": (m or {}).get("source", "?"), "score": round(1-d, 4)}
+        for c, d, m in top2
+    ], llm_backend)
 
     return {
         "answer": answer,
@@ -1071,7 +1269,7 @@ def _do_rag(question: str, top_k: int = 5, use_bm25: bool = True) -> dict:
                 "score": round(1 - d, 4),
                 "source": (m or {}).get("source", "unknown"),
             }
-            for c, d, m in top3
+            for c, d, m in top2
         ],
         "llm_used": llm_backend,
         "total_docs": VECTOR_STORE.count(),
@@ -1079,7 +1277,9 @@ def _do_rag(question: str, top_k: int = 5, use_bm25: bool = True) -> dict:
             "bm25_available": JIEBA_AVAILABLE,
             "jieba_available": JIEBA_AVAILABLE,
             "use_bm25": use_bm25 and JIEBA_AVAILABLE,
+            "use_rerank": use_rerank,
         },
+        "cache_hit": False,
     }
 
 
