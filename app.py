@@ -921,6 +921,7 @@ def health():
         "api_key_mode": "开发模式(无强制鉴权)" if not is_prod else "生产模式(已开启鉴权)",
         "feishu_configured": bool(FEISHU_APP_ID and FEISHU_APP_SECRET),
         "need_api_key": is_prod,
+        "bm25_available": JIEBA_AVAILABLE,
         "api_key_hint": (
             "开发模式：API Key 留空即可（后端自动跳过鉴权）"
             if not is_prod

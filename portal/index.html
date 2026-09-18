@@ -377,8 +377,8 @@ document.querySelectorAll('.tab').forEach(t => {
   try {
     // Status bar
     const h = await api('/health').catch(()=>({docs:0,bm25_available:false}));
-    document.getElementById('stat-chunks').textContent = h.docs ?? 0;
-    document.getElementById('stat-vector').textContent = h.docs > 0 ? '就绪' : '空';
+    document.getElementById('stat-chunks').textContent = h.docs_count ?? 0;
+    document.getElementById('stat-vector').textContent = h.docs_count > 0 ? '就绪' : '空';
     document.getElementById('stat-bm25').textContent = h.bm25_available ? '✅ 启用' : '⚠️ 未启用';
   } catch(e) { console.warn('health:', e.message); }
 
@@ -542,8 +542,8 @@ async function ingestText() {
 
 async function refreshStatus() {
   const h = await api('/health').catch(()=>({docs:0}));
-  document.getElementById('stat-chunks').textContent = h.docs ?? 0;
-  document.getElementById('stat-vector').textContent = h.docs > 0 ? '就绪' : '空';
+  document.getElementById('stat-chunks').textContent = h.docs_count ?? 0;
+  document.getElementById('stat-vector').textContent = h.docs_count > 0 ? '就绪' : '空';
   try {
     const kb = await api('/kb');
     document.getElementById('stat-files').textContent = `${Object.keys(kb.files||{}).length} 个文件`;
