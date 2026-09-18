@@ -1,13 +1,14 @@
 {
-  "envId": "auto-fill-in-cloudbase-console",
+  "envId": "lily0625ai-d1gpwc1vw89141edd",
   "cloudrun": {
     "serviceName": "ltc-rag-bot",
     "containerPort": 8080,
-    "minNum": 0,
-    "maxNum": 10,
+    "minNum": 1,
+    "maxNum": 3,
     "cpu": 0.5,
     "mem": 128,
     "envParams": {},
-    "customLogs": "stdout"
+    "customLogs": "stdout",
+    "name": "ltc-rag-bot"
   }
 }

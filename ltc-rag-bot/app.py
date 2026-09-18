@@ -542,33 +542,64 @@ def feishu_token():
 # ⑥ LLM 调用 —— 多级 fallback
 # ═══════════════════════════════════════════════════════════════════
 def call_llm(prompt: str) -> tuple:
-    """统一 LLM 调用 —— 多级 fallback 永不崩"""
+    """统一 LLM 调用 —— 多级 fallback 永不崩
 
-    # 优先级 1: DeepSeek 云端
-    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-    if deepseek_key:
+    优先级: 智谱(1) → 硅基流动(2) → Ollama(3) → 模板(4)
+    """
+
+    # ── 优先级 1: 智谱 AI (glm-4-flash / glm-4-air) ──
+    zhipu_key = os.environ.get("ZHIPU_API_KEY", "").strip()
+    zhipu_model = os.environ.get("ZHIPU_MODEL", "glm-4-flash").strip()
+    if zhipu_key:
         try:
             r = requests.post(
-                "https://api.deepseek.com/v1/chat/completions",
+                "https://open.bigmodel.cn/api/paas/v4/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {deepseek_key}",
+                    "Authorization": f"Bearer {zhipu_key}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "deepseek-chat",
+                    "model": zhipu_model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.3,
                     "max_tokens": 2000,
                 },
                 timeout=30,
             )
-            content = r.json()["choices"][0]["message"]["content"]
-            print(f"[llm] DeepSeek 调用成功 · {len(content)} chars")
-            return content, "deepseek"
+            data = r.json()
+            content = data["choices"][0]["message"]["content"]
+            print(f"[llm] ✅ 智谱 {zhipu_model} · {len(content)} chars")
+            return content, f"zhipu:{zhipu_model}"
         except Exception as e:
-            print(f"[llm] DeepSeek 失败: {e} · 继续尝试...")
+            print(f"[llm] ❌ 智谱失败: {e} · 继续尝试...")
 
-    # 优先级 2: Ollama 本地
+    # ── 优先级 2: 硅基流动 (SiliconFlow) ──
+    sf_key = os.environ.get("SILICONFLOW_API_KEY", "").strip()
+    sf_model = os.environ.get("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3").strip()
+    if sf_key:
+        try:
+            r = requests.post(
+                "https://api.siliconflow.cn/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {sf_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": sf_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                    "max_tokens": 2000,
+                },
+                timeout=30,
+            )
+            data = r.json()
+            content = data["choices"][0]["message"]["content"]
+            print(f"[llm] ✅ 硅基流动 {sf_model} · {len(content)} chars")
+            return content, f"siliconflow:{sf_model}"
+        except Exception as e:
+            print(f"[llm] ❌ 硅基流动失败: {e} · 继续尝试...")
+
+    # ── 优先级 3: Ollama 本地 ──
     ollama_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     ollama_model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
     try:
@@ -579,20 +610,22 @@ def call_llm(prompt: str) -> tuple:
         )
         content = r.json().get("response", "")
         if content:
-            print(f"[llm] Ollama 调用成功 · model={ollama_model} · {len(content)} chars")
-            return content, "ollama"
+            print(f"[llm] ✅ Ollama model={ollama_model} · {len(content)} chars")
+            return content, f"ollama:{ollama_model}"
     except Exception as e:
         print(f"[llm] Ollama 不可用: {e} · fallback")
 
-    # Fallback: 模板化回答
+    # ── 优先级 4: 模板化回答 ──
     return _template_fallback(prompt), "template-fallback"
+
 
 def _template_fallback(prompt: str) -> str:
     return (
         "【⚠️ 当前无可用 LLM · 以下为 RAG 检索原始片段】\n\n"
-        "建议接入以下任一 LLM 获得更好效果：\n"
-        "  • DeepSeek: 在环境变量填 DEEPSEEK_API_KEY\n"
-        "  • Ollama:   ollama pull qwen2.5:7b\n\n"
+        "建议在 CloudBase 环境变量中配置以下任一 API Key：\n"
+        "  • 智谱:         ZHIPU_API_KEY\n"
+        "  • 硅基流动:     SILICONFLOW_API_KEY\n"
+        "  • Ollama:       本地部署（CloudBase 不适用）\n\n"
         "——— 原始检索结果 ———\n"
         f"{prompt}\n"
     )
