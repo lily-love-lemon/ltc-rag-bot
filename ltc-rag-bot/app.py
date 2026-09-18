@@ -548,8 +548,8 @@ def call_llm(prompt: str) -> tuple:
     """
 
     # ── 优先级 1: 智谱 AI (glm-4-flash / glm-4-air) ──
-    zhipu_key = os.environ.get("ZHIPU_API_KEY", "").strip()
-    zhipu_model = os.environ.get("ZHIPU_MODEL", "glm-4-flash").strip()
+    zhipu_key = (os.environ.get("ZHIPU_API_KEY") or os.environ.get("ZHIPUAI_API_KEY") or "").strip()
+    zhipu_model = (os.environ.get("ZHIPU_MODEL") or os.environ.get("ZHIPUAI_MODEL") or "glm-4-flash").strip()
     if zhipu_key:
         try:
             r = requests.post(
@@ -574,8 +574,8 @@ def call_llm(prompt: str) -> tuple:
             print(f"[llm] ❌ 智谱失败: {e} · 继续尝试...")
 
     # ── 优先级 2: 硅基流动 (SiliconFlow) ──
-    sf_key = os.environ.get("SILICONFLOW_API_KEY", "").strip()
-    sf_model = os.environ.get("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3").strip()
+    sf_key = (os.environ.get("SILICONFLOW_API_KEY") or os.environ.get("SF_API_KEY") or "").strip()
+    sf_model = (os.environ.get("SILICONFLOW_MODEL") or os.environ.get("SF_MODEL") or "deepseek-ai/DeepSeek-V3").strip()
     if sf_key:
         try:
             r = requests.post(
