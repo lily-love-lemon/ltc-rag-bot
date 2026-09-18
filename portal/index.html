@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>LTC RAG Bot · 知识库管理门户 {{PORTAL_VERSION}}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:32px 24px;text-align:center}
+.header h1{font-size:24px;font-weight:700}
+.header p{opacity:.85;margin-top:6px;font-size:14px}
+.status-bar{max-width:960px;margin:24px auto;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat-card{background:#1e293b;border-radius:10px;padding:14px;border:1px solid #334155}
+.stat-card .label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+.stat-card .value{font-size:20px;font-weight:700;color:#60a5fa;margin-top:4px}
+.stat-card .value.ok{color:#4ade80}.stat-card .value.warn{color:#fbbf24}.stat-card .value.err{color:#f87171}
+.tabs{max-width:960px;margin:24px auto 0;padding:0 24px;display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:8px 14px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;cursor:pointer;font-size:13px}
+.tab.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.panel{max-width:960px;margin:16px auto;padding:0 24px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.dropzone{border:2px dashed #475569;border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all .2s}
+.dropzone:hover,.dropzone.drag{border-color:#3b82f6;background:#1e3a5f}
+.dropzone .icon{font-size:36px;margin-bottom:8px}
+.dropzone p{color:#94a3b8;font-size:13px}
+textarea,input[type=text],select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-family:inherit;font-size:13px}
+textarea{min-height:100px;resize:vertical;font-family:monospace;line-height:1.6}
+select{cursor:pointer}
+select:focus,textarea:focus,input:focus{outline:none;border-color:#3b82f6}
+.btn{background:#3b82f6;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s}
+.btn:hover{background:#2563eb}
+.btn.ghost{background:transparent;border:1px solid #475569;color:#94a3b8}
+.btn.ghost:hover{background:#334155;color:#fff}
+.btn.danger{background:#dc2626}
+.btn.danger:hover{background:#b91c1c}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.row label{font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:4px}
+.source-tag{background:#334155;color:#cbd5e1;padding:3px 10px;border-radius:12px;font-size:12px;display:inline-flex;align-items:center;gap:6px;margin:4px 4px 4px 0}
+.source-tag .count{background:#475569;padding:1px 7px;border-radius:10px;font-size:11px}
+.empty{text-align:center;padding:30px;color:#64748b;font-size:13px}
+.result-box{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px;margin-top:12px;font-size:13px;white-space:pre-wrap;line-height:1.7}
+.result-box .llm-tag{background:#7c3aed;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:8px}
+.sources-list{margin-top:10px}
+.source-item{background:#0f172a;border-left:3px solid #3b82f6;padding:10px 14px;margin:6px 0;border-radius:0 6px 6px 6px;font-size:12px;color:#cbd5e1}
+.source-item .score{color:#4ade80;font-weight:600}
+.source-item .src{color:#94a3b8;font-size:11px;margin-left:8px}
+.toast{position:fixed;top:20px;right:20px;background:#1e293b;border:1px solid #334155;padding:12px 20px;border-radius:8px;z-index:100;display:none;font-size:13px}
+.toast.ok{border-color:#4ade80}.toast.err{border-color:#f87171}
+.chunk-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.chunk-toolbar input,.chunk-toolbar select{max-width:220px}
+.chunk-list{max-height:600px;overflow-y:auto;border:1px solid #334155;border-radius:8px}
+.chunk-item{background:#0f172a;padding:12px 14px;border-bottom:1px solid #334155;font-size:13px;transition:background .15s}
+.chunk-item:last-child{border-bottom:none}
+.chunk-item:hover{background:#1e293b}
+.chunk-item .chunk-meta{display:flex;gap:12px;font-size:11px;color:#94a3b8;margin-bottom:6px;align-items:center}
+.chunk-item .chunk-meta .src{background:#3b82f6;padding:1px 8px;border-radius:4px;color:#fff}
+.chunk-item .chunk-meta .strat{background:#7c3aed;padding:1px 8px;border-radius:4px;color:#fff}
+.chunk-item .chunk-text{color:#cbd5e1;line-height:1.5;word-break:break-all}
+.chunk-item .chunk-actions{display:flex;gap:6px;margin-top:8px}
+.pagination{display:flex;gap:4px;align-items:center;justify-content:center;margin-top:12px}
+.pagination button{background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px}
+.pagination button.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.pagination button:disabled{opacity:.3;cursor:not-allowed}
+.pagination span{color:#64748b;font-size:12px;margin:0 6px}
+/* 弹窗 */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-bg.show{display:flex}
+.modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:90%;max-width:640px;max-height:85vh;overflow-y:auto}
+.modal h4{font-size:15px;margin-bottom:14px;color:#e2e8f0}
+.modal label{font-size:12px;color:#94a3b8;display:block;margin:10px 0 4px}
+.modal textarea{min-height:120px}
+.modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+/* prompt tab */
+.prompt-header{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.prompt-header select{max-width:200px}
+.prompt-meta{font-size:12px;color:#94a3b8;margin-bottom:8px}
+.prompt-hint{background:#0f172a;border:1px dashed #475569;border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px;color:#94a3b8}
+.prompt-hint code{background:#334155;padding:1px 5px;border-radius:3px;color:#fbbf24}
+.checkbox-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8}
+.checkbox-row input[type=checkbox]{width:16px;height:16px;accent-color:#3b82f6}
+@media(max-width:600px){.stat-card .value{font-size:16px}.tabs{gap:4px}.tab{padding:6px 10px;font-size:12px}}
+
+/* API Key 缺失引导 banner */
+.banner{background:linear-gradient(90deg,#dc2626,#ea580c);color:#fff;padding:14px 24px;text-align:center;font-size:14px;font-weight:500;border-bottom:1px solid #1e293b}
+.banner button{background:#fff;color:#dc2626;border:none;padding:6px 14px;margin-left:12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px}
+.banner button:hover{background:#fef2f2}
+
+</style>
+</head>
+<body><div id="need-key-banner" class="banner" style="display:none">
+  🔐 检测到 <b>生产模式</b> 但 API Key 未配置，上传/问答会返回 401 错误。
+  <button onclick="document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.style.display='none');document.querySelector('.tab[data-tab=settings]').classList.add('active');document.getElementById('panel-settings').style.display='block';document.getElementById('api-key-input').focus();">去 ⚙️ 设置 填入 API Key →</button>
+</div>
+
+
+<div class="header">
+  <h1>🧠 LTC RAG Bot · 知识库管理门户 v2</h1>
+  <p>多策略切片 · BM25 混合检索 · Prompt 可编辑 · 切片可手动修</p>
+</div>
+
+<div class="status-bar">
+  <div class="stat-card">
+    <div class="label">状态</div>
+    <div class="value" id="s-status">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">切片总数</div>
+    <div class="value" id="s-docs">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">BM25</div>
+    <div class="value" id="s-bm25" style="font-size:14px">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">飞书</div>
+    <div class="value" id="s-feishu" style="font-size:14px">...</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">API Key</div>
+    <div class="value" id="s-auth" style="font-size:14px">...</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="upload">📁 上传文档</div>
+  <div class="tab" data-tab="query">🔍 问答测试</div>
+  <div class="tab" data-tab="chunks">🔪 切片管理</div>
+  <div class="tab" data-tab="prompts">📝 Prompt 模板</div>
+  <div class="tab" data-tab="docs">📋 来源概览</div>
+  <div class="tab" data-tab="settings">⚙️ 设置</div>
+</div>
+
+<!-- 📁 上传文档（v2 + 切片策略） -->
+<div class="panel" id="panel-upload">
+  <div class="card">
+    <h3>📂 拖拽或点击上传（.pdf / .md / .txt）</h3>
+    <div class="chunk-toolbar">
+      <label style="font-size:12px;color:#94a3b8">切片策略:</label>
+      <select id="upload-strategy"><option value="default">default · 段落优先</option></select>
+    </div>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">⬆️</div>
+      <p>拖文件到这里，或点击选择 · 多个文件可一起选</p>
+    </div>
+    <input type="file" id="file-input" multiple accept=".pdf,.md,.txt" style="display:none">
+    <div class="row">
+      <button class="btn" id="btn-upload">开始上传</button>
+      <span id="upload-status" style="color:#94a3b8;font-size:12px"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>✍️ 直接录入一段文本</h3>
+    <textarea id="text-input" placeholder="把产品话术/招投标文档片段贴这里..."></textarea>
+    <div class="row">
+      <input type="text" id="text-source" placeholder="来源标签（如: 产品手册-电池）" style="max-width:300px">
+      <select id="text-strategy" style="max-width:250px"><option value="default">default</option></select>
+      <button class="btn" id="btn-ingest-text">入库</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🔍 问答测试（v2 + BM25 开关 + 显示 hybrid 信息） -->
+<div class="panel" id="panel-query" style="display:none">
+  <div class="card">
+    <h3>💬 提问试试 RAG + LLM（FABE 话术生成）</h3>
+    <textarea id="query-input" placeholder="比如：零下30度续航如何保证？"></textarea>
+    <div class="row">
+      <button class="btn" id="btn-query">🔍 提问</button>
+      <label class="checkbox-row"><input type="checkbox" id="query-bm25" checked> BM25 混合检索</label>
+      <span id="query-status" style="color:#94a3b8;font-size:12px;margin-left:auto"></span>
+    </div>
+    <div id="query-result" style="display:none">
+      <h4 style="margin-top:14px;font-size:13px;color:#94a3b8">🤖 AI 回答 (FABE)</h4>
+      <div class="result-box" id="query-answer"></div>
+      <h4 style="margin-top:14px;font-size:13px;color:#94a3b8">📎 参考来源</h4>
+      <div id="query-sources" class="sources-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 🔪 切片管理（v2 新增） -->
+<div class="panel" id="panel-chunks" style="display:none">
+  <div class="card">
+    <h3>🔪 切片管理（手动编辑 / 删除）</h3>
+    <div class="chunk-toolbar">
+      <input type="text" id="chunk-keyword" placeholder="🔍 全文搜索切片...">
+      <select id="chunk-filter-source"><option value="">所有来源</option></select>
+      <select id="chunk-filter-strategy"><option value="">所有策略</option></select>
+      <button class="btn sm" id="chunk-btn-search">搜索</button>
+      <span id="chunk-total" style="color:#94a3b8;font-size:12px;margin-left:auto"></span>
+    </div>
+    <div class="chunk-list" id="chunk-list"><div class="empty">加载中...</div></div>
+    <div class="pagination" id="chunk-pagination"></div>
+  </div>
+</div>
+
+<!-- 📝 Prompt 模板（v2 新增） -->
+<div class="panel" id="panel-prompts" style="display:none">
+  <div class="card">
+    <h3>📝 Prompt 模板（文件化，改完热生效）</h3>
+    <div class="prompt-header">
+      <select id="prompt-select"></select>
+      <button class="btn sm" id="prompt-btn-reload">🔄 重新加载</button>
+      <button class="btn sm" id="prompt-btn-save">💾 保存修改</button>
+      <button class="btn sm ghost" id="prompt-btn-reset">↩️ 恢复内置</button>
+      <span id="prompt-status" style="color:#94a3b8;font-size:12px;margin-left:auto"></span>
+    </div>
+    <div class="prompt-meta" id="prompt-meta"></div>
+    <textarea id="prompt-editor" placeholder="模板内容..."></textarea>
+    <div class="prompt-hint">
+      <b>可用占位符：</b>
+      <code>{question}</code> — 用户问题 &nbsp;|&nbsp;
+      <code>{context}</code> — RAG 检索到的参考片段<br>
+      保存在 <code>prompts/{name}.txt</code>，删除文件自动恢复内置兜底。
+    </div>
+  </div>
+</div>
+
+<!-- 📋 来源概览 -->
+<div class="panel" id="panel-docs" style="display:none">
+  <div class="card">
+    <h3>📊 向量库来源概览</h3>
+    <div id="docs-content"><div class="empty">加载中...</div></div>
+    <div class="row" id="docs-actions" style="display:none">
+      <button class="btn danger" id="btn-clear-all">⚠️ 清空全部（危险）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ⚙️ 设置 -->
+<div class="panel" id="panel-settings" style="display:none">
+  <div class="card">
+    <h3>🔐 API Key</h3>
+    <div class="row">
+      <input type="text" id="api-key-input" value="{{AUTO_API_KEY}}" placeholder="开发模式留空即可" style="max-width:300px">
+      <button class="btn ghost" id="btn-save-key">保存（仅当前会话）</button>
+    </div>
+    <p style="color:#64748b;font-size:12px;margin-top:8px">如果你在 <code>.env</code> 里把 API_KEY 改成了非默认值，在这里输入同样的 key。</p>
+  </div>
+  <div class="card">
+    <h3>🛠 后端信息</h3>
+    <div id="backend-info" style="font-size:13px;line-height:2;color:#cbd5e1"></div>
+  </div>
+</div>
+
+<!-- 🔧 切片编辑弹窗 -->
+<div class="modal-bg" id="chunk-modal">
+  <div class="modal">
+    <h4>✏️ 编辑切片</h4>
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px" id="chunk-modal-id"></div>
+    <label>来源标签</label>
+    <input type="text" id="chunk-modal-source">
+    <label>切片策略</label>
+    <input type="text" id="chunk-modal-strategy" disabled style="background:#1e293b">
+    <label>切片内容（改完自动重算 embedding）</label>
+    <textarea id="chunk-modal-text"></textarea>
+    <div class="modal-actions">
+      <button class="btn ghost" id="chunk-modal-cancel">取消</button>
+      <button class="btn danger sm" id="chunk-modal-delete" style="margin-right:auto">🗑️ 删除</button>
+      <button class="btn" id="chunk-modal-save">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = location.origin;
+let apiKey = localStorage.getItem('ltc_api_key') || '';
+let currentPage = 1;
+let pageSize = 20;
+let editingChunkId = null;
+
+// ─── 通用 API ───
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers||{}) };
+  if (apiKey && !opts.noKey) headers['X-API-Key'] = apiKey;
+  if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
+  const r = await fetch(API_BASE + path, { ...opts, headers });
+  if (!r.ok) {
+    if (r.status === 401) {
+      toast('🔐 API Key 缺失或错误 — 请先去 ⚙️ 设置 tab 填入', 'err');
+      // 自动跳转到 settings tab
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+      const settingsTab = document.querySelector('.tab[data-tab="settings"]');
+      if (settingsTab) { settingsTab.classList.add('active'); document.getElementById('panel-settings').style.display = 'block'; document.getElementById('api-key-input').focus(); }
+      throw new Error('401 Unauthorized — 需要 API Key');
+    }
+    const t = await r.text(); throw new Error(`${r.status} ${t}`);
+  }
+  return r.json();
+}
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+type; t.style.display='block';
+  setTimeout(()=> t.style.display='none', 2800);
+}
+
+// ─── Tab 切换（v2 扩展） ───
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.style.display = 'none');
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).style.display = 'block';
+    const tab = t.dataset.tab;
+    if (tab === 'chunks') loadChunks(1);
+    if (tab === 'prompts') loadPrompts();
+    if (tab === 'docs') loadDocs();
+    if (tab === 'settings') loadBackendInfo();
+  };
+});
+
+// ─── 状态面板（v2 加 BM25/飞书） ───
+async function loadStatus() {
+  try {
+    const h = await api('/health', { noKey: true });
+    document.getElementById('s-status').textContent = '✓ 在线';
+    document.getElementById('s-status').className = 'value ok';
+    document.getElementById('s-docs').textContent = h.docs_count;
+    document.getElementById('s-bm25').textContent = '✓ 就绪';
+    document.getElementById('s-bm25').className = 'value ok';
+    document.getElementById('s-feishu').textContent = h.feishu_configured ? '✓ 已配' : '✗ 未配';
+    document.getElementById('s-feishu').className = 'value '+(h.feishu_configured?'ok':'err');
+    document.getElementById('s-auth').textContent = h.api_key_mode.includes('无') ? '开发' : '鉴权';
+    document.getElementById('s-auth').className = 'value '+(h.api_key_mode.includes('无')?'warn':'ok');
+    // ── API Key 引导 banner + 自动填充注入值 ──
+    const banner = document.getElementById('need-key-banner');
+    if (h.need_api_key && !apiKey) {
+      if (banner) banner.style.display = 'block';
+      // 如果 HTML 里注入了 {{AUTO_API_KEY}}（生产模式后端注入），自动保存
+      const injected = document.getElementById('api-key-input')?.value || '';
+      if (injected && !apiKey) {
+        apiKey = injected;
+        localStorage.setItem('ltc_api_key', apiKey);
+        if (banner) banner.style.display = 'none';
+        toast('✓ 检测到生产 API Key 已自动填充，可以开始上传了！');
+      }
+    } else {
+      if (banner) banner.style.display = 'none';
+    }
+  } catch(e) {
+    document.getElementById('s-status').textContent = '✗ 离线';
+    document.getElementById('s-status').className = 'value err';
+    ['s-docs','s-bm25','s-feishu','s-auth'].forEach(id=>{
+      document.getElementById(id).textContent='-';
+      document.getElementById(id).className='value';
+    });
+  }
+}
+loadStatus(); setInterval(loadStatus, 15000);
+
+// ─── 切片策略下拉（v2 新增） ───
+async function loadStrategies() {
+  try {
+    const s = await api('/strategies', { noKey: true });
+    const opts = Object.entries(s).map(([k,v])=>
+      `<option value="${k}">${v.name} · ${v.mode} · min${v.min_chunk_len}/max${v.max_chunk_len}</option>`
+    ).join('');
+    ['upload-strategy','text-strategy'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) { el.innerHTML = opts || '<option value="default">default</option>'; }
+    });
+  } catch(e) { console.warn('loadStrategies fail', e); }
+}
+loadStrategies();
+
+// ─── 上传 ───
+const dz = document.getElementById('dropzone');
+const fi = document.getElementById('file-input');
+dz.onclick = () => fi.click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
+dz.ondragleave = () => dz.classList.remove('drag');
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drag'); handleFiles(e.dataTransfer.files); };
+fi.onchange = e => handleFiles(e.target.files);
+
+async function handleFiles(files) {
+  const strat = document.getElementById('upload-strategy').value;
+  for (const f of files) {
+    const fd = new FormData();
+    fd.append('file', f);
+    fd.append('strategy', strat);
+    document.getElementById('upload-status').textContent = `上传中: ${f.name}...`;
+    try {
+      const h = new Headers();
+      if (apiKey) h.set('X-API-Key', apiKey);
+      const r = await fetch(API_BASE + '/ingest', { method: 'POST', headers: h, body: fd });
+      const data = await r.json();
+      if (r.ok) {
+        toast(`✓ ${f.name} → ${data.ingested} 切片 (${data.strategy})`);
+        document.getElementById('upload-status').textContent = `${f.name} ✓`;
+      } else {
+        toast(`✗ ${f.name}: ${data.detail || r.status}`, 'err');
+      }
+    } catch(e) { toast(`✗ ${f.name}: ${e.message}`, 'err'); }
+  }
+  loadStatus();
+}
+
+document.getElementById('btn-ingest-text').onclick = async () => {
+  const text = document.getElementById('text-input').value.trim();
+  const source = document.getElementById('text-source').value.trim() || 'inline';
+  const strat = document.getElementById('text-strategy').value;
+  if (!text) { toast('请先输入文本', 'err'); return; }
+  try {
+    const r = await api('/ingest-text', { method:'POST', body:{ text, source, strategy: strat } });
+    toast(`✓ 入库 ${r.ingested} 切片 · 策略 ${r.strategy} · 总计 ${r.total}`);
+    document.getElementById('text-input').value = '';
+    loadStatus();
+  } catch(e) { toast('✗ '+e.message, 'err'); }
+};
+
+// ─── Query（v2 加 BM25 开关） ───
+document.getElementById('btn-query').onclick = async () => {
+  const q = document.getElementById('query-input').value.trim();
+  const bm25 = document.getElementById('query-bm25').checked;
+  if (!q) { toast('请先输入问题', 'err'); return; }
+  document.getElementById('query-status').textContent = '查询中...';
+  document.getElementById('query-result').style.display = 'none';
+  try {
+    const r = await api('/query', { method:'POST', body:{ question:q, use_bm25:bm25 } });
+    document.getElementById('query-result').style.display = 'block';
+    document.getElementById('query-answer').textContent = r.answer;
+    const sl = document.getElementById('query-sources');
+    sl.innerHTML = (r.sources||[]).map(s =>
+      `<div class="source-item"><span class="score">相似度 ${(s.score*100).toFixed(1)}%</span><span class="src">📄 ${s.source}</span><br>${s.text}</div>`
+    ).join('');
+    const hyb = r.hybrid || {};
+    document.getElementById('query-status').textContent =
+      `完成 · ${r.total_docs} 条切片 · LLM: ${r.llm_used} · BM25: ${hyb.use_bm25?'✓':'✗'}${hyb.bm25_available?'':'(未装)'}`;
+  } catch(e) { toast('✗ '+e.message, 'err'); document.getElementById('query-status').textContent=''; }
+};
+
+// ─── 🔪 切片管理（v2 新增） ───
+async function loadChunks(page=1) {
+  currentPage = page;
+  const kw = document.getElementById('chunk-keyword').value.trim();
+  const src = document.getElementById('chunk-filter-source').value;
+  const strat = document.getElementById('chunk-filter-strategy').value;
+  const params = new URLSearchParams({ page, page_size: pageSize });
+  if (kw) params.set('keyword', kw);
+  if (src) params.set('source', src);
+  if (strat) params.set('strategy', strat);
+  try {
+    const r = await api('/chunks?'+params.toString());
+    document.getElementById('chunk-total').textContent = `共 ${r.total} 条 · 第 ${r.page}/${r.total_pages} 页`;
+    const list = document.getElementById('chunk-list');
+    if (!r.chunks.length) {
+      list.innerHTML = '<div class="empty">没有匹配的切片</div>';
+    } else {
+      list.innerHTML = r.chunks.map(c => `
+        <div class="chunk-item">
+          <div class="chunk-meta">
+            <span class="src">📄 ${c.source}</span>
+            <span class="strat">⚙️ ${c.strategy}</span>
+            <span>📏 ${c.length}字</span>
+            <span style="color:#64748b">#${c.id.slice(0,8)}…</span>
+            ${c.score !== null ? `<span style="color:#4ade80">相似度 ${(c.score*100).toFixed(1)}%</span>` : ''}
+          </div>
+          <div class="chunk-text">${c.text_preview || c.text}</div>
+          <div class="chunk-actions">
+            <button class="btn sm ghost" onclick='openChunkEdit(${JSON.stringify(c).replace(/'/g,"&#39;")})'>✏️ 编辑</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    renderPagination(r.total, r.total_pages, page);
+    populateChunkFilters();
+  } catch(e) {
+    document.getElementById('chunk-list').innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+  }
+}
+
+function renderPagination(total, totalPages, page) {
+  const pg = document.getElementById('chunk-pagination');
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = `<button ${page===1?'disabled':''} onclick="loadChunks(${page-1})">‹</button>`;
+  const start = Math.max(1, page-2), end = Math.min(totalPages, start+4);
+  for (let i=start; i<=end; i++) {
+    html += `<button class="${i===page?'active':''}" onclick="loadChunks(${i})">${i}</button>`;
+  }
+  html += `<button ${page===totalPages?'disabled':''} onclick="loadChunks(${page+1})">›</button>`;
+  pg.innerHTML = html;
+}
+
+async function populateChunkFilters() {
+  try {
+    const r = await api('/kb', { noKey: true });
+    const srcSel = document.getElementById('chunk-filter-source');
+    const curVal = srcSel.value;
+    srcSel.innerHTML = '<option value="">所有来源</option>' +
+      Object.keys(r.sources).map(s => `<option value="${s}">${s}</option>`).join('');
+    srcSel.value = curVal;
+    // strategies
+    const s = await api('/strategies', { noKey: true });
+    const stratSel = document.getElementById('chunk-filter-strategy');
+    const curStrat = stratSel.value;
+    stratSel.innerHTML = '<option value="">所有策略</option>' +
+      Object.entries(s).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('');
+    stratSel.value = curStrat;
+  } catch(e){}
+}
+
+document.getElementById('chunk-btn-search').onclick = () => loadChunks(1);
+document.getElementById('chunk-keyword').addEventListener('keydown', e => { if (e.key==='Enter') loadChunks(1); });
+document.getElementById('chunk-filter-source').onchange = () => loadChunks(1);
+document.getElementById('chunk-filter-strategy').onchange = () => loadChunks(1);
+
+// 编辑弹窗
+function openChunkEdit(c) {
+  editingChunkId = c.id;
+  document.getElementById('chunk-modal-id').textContent = `ID: ${c.id}`;
+  document.getElementById('chunk-modal-source').value = c.source;
+  document.getElementById('chunk-modal-strategy').value = c.strategy;
+  document.getElementById('chunk-modal-text').value = c.text;
+  document.getElementById('chunk-modal').classList.add('show');
+}
+document.getElementById('chunk-modal-cancel').onclick = () => {
+  document.getElementById('chunk-modal').classList.remove('show'); editingChunkId=null;
+};
+document.getElementById('chunk-modal').onclick = e => {
+  if (e.target.id === 'chunk-modal') document.getElementById('chunk-modal').classList.remove('show');
+};
+document.getElementById('chunk-modal-save').onclick = async () => {
+  if (!editingChunkId) return;
+  const text = document.getElementById('chunk-modal-text').value.trim();
+  const source = document.getElementById('chunk-modal-source').value.trim();
+  if (text.length < 5) { toast('文本太短（最少5字）','err'); return; }
+  try {
+    await api('/chunks/'+editingChunkId, {
+      method:'PATCH',
+      body:{ text, source }
+    });
+    toast('✓ 已更新，embedding 已重算');
+    document.getElementById('chunk-modal').classList.remove('show');
+    loadChunks(currentPage); loadStatus();
+  } catch(e) { toast('✗ '+e.message, 'err'); }
+};
+document.getElementById('chunk-modal-delete').onclick = async () => {
+  if (!editingChunkId) return;
+  if (!confirm('确定删除这条切片？')) return;
+  try {
+    await api('/kb/'+editingChunkId, { method:'DELETE' });
+    toast('✓ 已删除');
+    document.getElementById('chunk-modal').classList.remove('show');
+    loadChunks(Math.max(1,currentPage)); loadStatus();
+  } catch(e) { toast('✗ '+e.message, 'err'); }
+};
+
+// ─── 📝 Prompt 模板（v2 新增） ───
+async function loadPrompts() {
+  try {
+    const list = await api('/prompts', { noKey: true });
+    const sel = document.getElementById('prompt-select');
+    sel.innerHTML = list.map(p =>
+      `<option value="${p.name}">${p.name}${p.has_file?' 📄':''}${p.has_builtin?' 🧱':''}</option>`
+    ).join('');
+    await loadPromptContent(list[0].name);
+  } catch(e) { toast('✗ 加载失败 '+e.message, 'err'); }
+}
+
+async function loadPromptContent(name) {
+  try {
+    const r = await api('/prompts/'+name, { noKey: true });
+    document.getElementById('prompt-editor').value = r.content;
+    document.getElementById('prompt-meta').innerHTML =
+      `📄 文件: <code>prompts/${name}.txt</code> | ` +
+      `${r.has_file ? '<span style="color:#4ade80">✓ 有文件</span>' : '<span style="color:#64748b">（无文件，使用内置）</span>'} | ` +
+      `${r.has_builtin ? '<span style="color:#fbbf24">🧱 内置兜底可用</span>' : ''}`;
+    document.getElementById('prompt-status').textContent = '';
+  } catch(e) { toast('✗ '+e.message, 'err'); }
+}
+
+document.getElementById('prompt-select').onchange = e => loadPromptContent(e.target.value);
+document.getElementById('prompt-btn-reload').onclick = () => loadPromptContent(document.getElementById('prompt-select').value);
+document.getElementById('prompt-btn-save').onclick = async () => {
+  const name = document.getElementById('prompt-select').value;
+  const content = document.getElementById('prompt-editor').value;
+  if (!content.trim()) { toast('模板内容不能为空','err'); return; }
+  try {
+    await api('/prompts/'+name, { method:'PUT', body:{ content } });
+    document.getElementById('prompt-status').textContent = '✓ 已保存，热生效';
+    toast('✓ Prompt 已保存');
+    loadPromptContent(name);
+  } catch(e) { toast('✗ '+e.message, 'err'); }
+};
+document.getElementById('prompt-btn-reset').onclick = async () => {
+  const name = document.getElementById('prompt-select').value;
+  if (!confirm(`确定删除 prompts/${name}.txt 恢复内置？`)) return;
+  try {
+    await api('/prompts/'+name, { method:'DELETE' });
+    toast('✓ 已恢复内置');
+    loadPromptContent(name);
+  } catch(e) { toast('✗ '+e.message, 'err'); }
+};
+
+// ─── Docs ───
+async function loadDocs() {
+  try {
+    const r = await api('/kb');
+    const tags = Object.entries(r.sources);
+    if (!tags.length) {
+      document.getElementById('docs-content').innerHTML = '<div class="empty">知识库为空 · 去「上传文档」灌点内容吧</div>';
+      document.getElementById('docs-actions').style.display = 'none';
+    } else {
+      document.getElementById('docs-content').innerHTML =
+        `<p style="color:#94a3b8;font-size:13px;margin-bottom:12px">共 ${r.total_chunks} 条切片 · ${tags.length} 个来源</p>` +
+        tags.map(([src,n])=>`<span class="source-tag">📄 ${src}<span class="count">${n}</span></span>`).join('');
+      document.getElementById('docs-actions').style.display = 'flex';
+    }
+  } catch(e) { document.getElementById('docs-content').innerHTML = `<div class="empty">加载失败: ${e.message}</div>`; }
+}
+document.getElementById('btn-clear-all').onclick = async () => {
+  if (!confirm('确定清空整个知识库？不可恢复！')) return;
+  try { await api('/kb', { method:'DELETE' }); toast('✓ 已清空'); loadDocs(); loadStatus(); }
+  catch(e) { toast('✗ '+e.message, 'err'); }
+};
+
+// ─── Settings ───
+async function loadBackendInfo() {
+  try {
+    const h = await api('/health', { noKey: true });
+    document.getElementById('backend-info').innerHTML =
+      `<div>版本: <b>${h.version}</b></div>` +
+      `<div>Embedding: <b>${h.embedding}</b></div>` +
+      `<div>API Key 模式: <b>${h.api_key_mode}</b></div>` +
+      `<div>飞书配置: <b style="color:${h.feishu_configured?'#4ade80':'#f87171'}">${h.feishu_configured?'✓ 已配置':'✗ 未配置'}</b></div>` +
+      `<div>向量总数: <b>${h.docs_count}</b></div>`;
+  } catch(e) { document.getElementById('backend-info').textContent = '加载失败: '+e.message; }
+}
+
+document.getElementById('api-key-input').value = apiKey;
+document.getElementById('btn-save-key').onclick = () => {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('ltc_api_key', apiKey);
+  toast(apiKey ? '✓ API Key 已保存' : '✓ 已清空');
+};
+</script>
+</body>
+</html>
