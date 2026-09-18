@@ -24,7 +24,7 @@ except ImportError:
 
 from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends, Query, Request
 from fastapi.security import APIKeyHeader
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from pypdf import PdfReader
 import requests
 
@@ -776,6 +776,11 @@ async def portal():
         "health": "ok",
         "hint": "把 portal/index.html 放到 portal/ 目录下即可启用管理门户",
     }
+
+@app.get("/portal")
+async def portal_alt():
+    """Portal 备用路径 —— 307 redirect 到 /"""
+    return RedirectResponse(url="/", status_code=307)
 
 @app.get("/health")
 def health():
