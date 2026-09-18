@@ -1004,26 +1004,24 @@ def delete_single_chunk(chunk_id: str, _: bool = Depends(verify_api_key)):
     VECTOR_STORE.delete(ids=[chunk_id])
     return {"ok": True, "deleted": chunk_id, "remaining": VECTOR_STORE.count()}
 
-# ── RAG 问答 ──
+# ── RAG 核心逻辑（独立函数，可被路由层和 webhook 直接调用） ──
 
-@app.post("/query")
-async def query(body: dict, _: bool = Depends(verify_api_key)):
-    """RAG + LLM FABE 问答 —— 混合检索"""
-    q = body.get("question", "").strip()
-    top_k = body.get("top_k", 5)
-    use_bm25 = body.get("use_bm25", True)
+def _do_rag(question: str, top_k: int = 5, use_bm25: bool = True) -> dict:
+    """RAG + LLM FABE 问答 —— 纯函数，不做鉴权，返回结构化 dict"""
+    q = question.strip()
     if not q:
-        raise HTTPException(400, "question required")
+        raise ValueError("question required")
 
     chunks, distances, metadatas_list = _hybrid_search(q, VECTOR_STORE, top_k=top_k, use_bm25=use_bm25)
 
     if not chunks:
-        return JSONResponse({
+        return {
             "answer": "⚠️ 知识库为空，请先上传产品文档。",
             "sources": [],
             "total_docs": 0,
             "hybrid": {"bm25_available": JIEBA_AVAILABLE, "use_bm25": False},
-        })
+            "llm_used": "none",
+        }
 
     top3 = list(zip(chunks[:3], distances[:3], metadatas_list[:3]))
     context_block = "\n".join(
@@ -1039,7 +1037,7 @@ async def query(body: dict, _: bool = Depends(verify_api_key)):
     else:
         answer = f"**问题**：{q}\n\n**🤖 AI 话术（FABE · {llm_backend}）**：\n{llm_reply}\n\n**📎 参考片段**：\n{context_block}"
 
-    return JSONResponse({
+    return {
         "answer": answer,
         "sources": [
             {
@@ -1056,7 +1054,24 @@ async def query(body: dict, _: bool = Depends(verify_api_key)):
             "jieba_available": JIEBA_AVAILABLE,
             "use_bm25": use_bm25 and JIEBA_AVAILABLE,
         },
-    })
+    }
+
+
+# ── RAG 问答路由（thin wrapper：鉴权 → _do_rag → 返回 JSONResponse） ──
+
+@app.post("/query")
+async def query(body: dict, _: bool = Depends(verify_api_key)):
+    """RAG + LLM FABE 问答 —— 混合检索"""
+    q = body.get("question", "").strip()
+    if not q:
+        raise HTTPException(400, "question required")
+
+    result = _do_rag(
+        question=q,
+        top_k=body.get("top_k", 5),
+        use_bm25=body.get("use_bm25", True),
+    )
+    return JSONResponse(result)
 
 # ── 飞书 Webhook（增强版 v2）──
 
@@ -1137,15 +1152,14 @@ async def webhook(payload: dict, request: Request):
 
         print(f"[webhook] 💬 处理消息: '{text[:80]}'")
 
-        # 8. RAG 查询
+        # 8. RAG 查询 —— 直接调 _do_rag()，跳过 FastAPI 路由层的 API key 鉴权
         reply = ""
+        llm_used = ""
         try:
-            result = await query({"question": text}, _=True)
-            answer_text = result.body.decode() if hasattr(result, 'body') else json.dumps(result)
-            try:
-                reply = json.loads(answer_text).get("answer", str(answer_text))
-            except Exception:
-                reply = str(answer_text)
+            rag_result = _do_rag(question=text)
+            reply = rag_result.get("answer", "")
+            llm_used = rag_result.get("llm_used", "")
+            print(f"[webhook] ✅ RAG 完成 · llm={llm_used} · total_docs={rag_result.get('total_docs',0)}")
         except Exception as e:
             print(f"[webhook] ❌ RAG 查询失败: {e}")
             reply = f"⚠️ 查询出错: {str(e)[:200]}"
@@ -1174,9 +1188,9 @@ async def webhook(payload: dict, request: Request):
             )
             resp = r.json()
             if resp.get("code") == 0:
-                print(f"[webhook] ✅ 飞书回复成功 (chat={chat_id[:12]})")
+                print(f"[webhook] ✅ 飞书回复成功 (chat={chat_id[:12]}... msg_id={resp.get('data',{}).get('message_id','?')})")
             else:
-                print(f"[webhook] ❌ 飞书回复失败: code={resp.get('code')} msg={resp.get('msg')}")
+                print(f"[webhook] ❌ 飞书回复失败: code={resp.get('code')} msg={resp.get('msg')} detail={json.dumps(resp)}")
         except Exception as e:
             print(f"[webhook] ❌ 发送飞书异常: {e}")
 
