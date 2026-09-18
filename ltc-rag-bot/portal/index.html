@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>LTC RAG Bot · 知识库管理门户 v2</title>
+<title>LTC RAG Bot · 知识库管理门户 {{PORTAL_VERSION}}</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -83,9 +83,19 @@ select:focus,textarea:focus,input:focus{outline:none;border-color:#3b82f6}
 .checkbox-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8}
 .checkbox-row input[type=checkbox]{width:16px;height:16px;accent-color:#3b82f6}
 @media(max-width:600px){.stat-card .value{font-size:16px}.tabs{gap:4px}.tab{padding:6px 10px;font-size:12px}}
+
+/* API Key 缺失引导 banner */
+.banner{background:linear-gradient(90deg,#dc2626,#ea580c);color:#fff;padding:14px 24px;text-align:center;font-size:14px;font-weight:500;border-bottom:1px solid #1e293b}
+.banner button{background:#fff;color:#dc2626;border:none;padding:6px 14px;margin-left:12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px}
+.banner button:hover{background:#fef2f2}
+
 </style>
 </head>
-<body>
+<body><div id="need-key-banner" class="banner" style="display:none">
+  🔐 检测到 <b>生产模式</b> 但 API Key 未配置，上传/问答会返回 401 错误。
+  <button onclick="document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.style.display='none');document.querySelector('.tab[data-tab=settings]').classList.add('active');document.getElementById('panel-settings').style.display='block';document.getElementById('api-key-input').focus();">去 ⚙️ 设置 填入 API Key →</button>
+</div>
+
 
 <div class="header">
   <h1>🧠 LTC RAG Bot · 知识库管理门户 v2</h1>
@@ -226,7 +236,7 @@ select:focus,textarea:focus,input:focus{outline:none;border-color:#3b82f6}
   <div class="card">
     <h3>🔐 API Key</h3>
     <div class="row">
-      <input type="text" id="api-key-input" placeholder="开发模式留空即可" style="max-width:300px">
+      <input type="text" id="api-key-input" value="{{AUTO_API_KEY}}" placeholder="开发模式留空即可" style="max-width:300px">
       <button class="btn ghost" id="btn-save-key">保存（仅当前会话）</button>
     </div>
     <p style="color:#64748b;font-size:12px;margin-top:8px">如果你在 <code>.env</code> 里把 API_KEY 改成了非默认值，在这里输入同样的 key。</p>
@@ -271,7 +281,18 @@ async function api(path, opts = {}) {
   if (apiKey && !opts.noKey) headers['X-API-Key'] = apiKey;
   if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
   const r = await fetch(API_BASE + path, { ...opts, headers });
-  if (!r.ok) { const t = await r.text(); throw new Error(`${r.status} ${t}`); }
+  if (!r.ok) {
+    if (r.status === 401) {
+      toast('🔐 API Key 缺失或错误 — 请先去 ⚙️ 设置 tab 填入', 'err');
+      // 自动跳转到 settings tab
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+      const settingsTab = document.querySelector('.tab[data-tab="settings"]');
+      if (settingsTab) { settingsTab.classList.add('active'); document.getElementById('panel-settings').style.display = 'block'; document.getElementById('api-key-input').focus(); }
+      throw new Error('401 Unauthorized — 需要 API Key');
+    }
+    const t = await r.text(); throw new Error(`${r.status} ${t}`);
+  }
   return r.json();
 }
 function toast(msg, type='ok') {
@@ -308,6 +329,21 @@ async function loadStatus() {
     document.getElementById('s-feishu').className = 'value '+(h.feishu_configured?'ok':'err');
     document.getElementById('s-auth').textContent = h.api_key_mode.includes('无') ? '开发' : '鉴权';
     document.getElementById('s-auth').className = 'value '+(h.api_key_mode.includes('无')?'warn':'ok');
+    // ── API Key 引导 banner + 自动填充注入值 ──
+    const banner = document.getElementById('need-key-banner');
+    if (h.need_api_key && !apiKey) {
+      if (banner) banner.style.display = 'block';
+      // 如果 HTML 里注入了 {{AUTO_API_KEY}}（生产模式后端注入），自动保存
+      const injected = document.getElementById('api-key-input')?.value || '';
+      if (injected && !apiKey) {
+        apiKey = injected;
+        localStorage.setItem('ltc_api_key', apiKey);
+        if (banner) banner.style.display = 'none';
+        toast('✓ 检测到生产 API Key 已自动填充，可以开始上传了！');
+      }
+    } else {
+      if (banner) banner.style.display = 'none';
+    }
   } catch(e) {
     document.getElementById('s-status').textContent = '✗ 离线';
     document.getElementById('s-status').className = 'value err';

@@ -24,7 +24,7 @@ except ImportError:
 
 from fastapi import FastAPI, UploadFile, HTTPException, Security, Depends, Query, Request
 from fastapi.security import APIKeyHeader
-from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse, HTMLResponse
 from pypdf import PdfReader
 import requests
 
@@ -765,37 +765,55 @@ def list_prompts(_: bool = Depends(verify_api_key)):
 # ⑨ 端点实现
 # ═══════════════════════════════════════════════════════════════════
 
+# ── Portal 模板渲染：注入 API Key ──
+def _render_portal_html() -> HTMLResponse:
+    """读取 portal/index.html，注入后端 API Key（生产模式且开启注入时）"""
+    portal_path = Path(__file__).parent / "portal" / "index.html"
+    if not portal_path.exists():
+        return HTMLResponse("Portal index.html 未找到")
+    html = portal_path.read_text(encoding="utf-8")
+    # 注入 API Key（仅生产模式 + 环境变量开启注入时）
+    is_prod = API_KEY != "dev-only-key-change-in-prod"
+    inject_enabled = os.environ.get("API_KEY_IN_HTML", "true").lower() in ("true", "1", "yes")
+    if is_prod and inject_enabled:
+        html = html.replace("{{AUTO_API_KEY}}", API_KEY)
+        html = html.replace("{{PORTAL_VERSION}}", "v3-prod")
+    else:
+        html = html.replace("{{AUTO_API_KEY}}", "")
+        html = html.replace("{{PORTAL_VERSION}}", "v3-dev")
+    return HTMLResponse(html)
+
+
 @app.get("/")
 async def portal():
-    """知识库管理门户 —— 返回 portal/index.html"""
-    portal_path = Path(__file__).parent / "portal" / "index.html"
-    if portal_path.exists():
-        return FileResponse(portal_path)
-    return {
-        "service": "LTC RAG Bot v3.0",
-        "health": "ok",
-        "hint": "把 portal/index.html 放到 portal/ 目录下即可启用管理门户",
-    }
+    """知识库管理门户 —— 模板渲染 + API Key 注入"""
+    return _render_portal_html()
+
 
 @app.get("/portal")
 async def portal_alt():
-    """Portal 备用路径 —— CloudBase 代理会吞 307 redirect，直接返回 FileResponse"""
-    portal_path = Path(__file__).parent / "portal" / "index.html"
-    if portal_path.exists():
-        return FileResponse(portal_path)
-    return {"detail": "portal/index.html not found"}
+    """Portal 备用路径 —— 同 /"""
+    return _render_portal_html()
+
 
 @app.get("/health")
 def health():
     """健康检查（公开免鉴权）"""
+    is_prod = API_KEY != "dev-only-key-change-in-prod"
     return {
         "status": "ok",
         "version": "3.0",
         "docs_count": VECTOR_STORE.count(),
         "embedding": "TF-IDF + Jieba (自实现, 零模型下载)",
         "vector_dim": VECTOR_STORE.vocab.get("_dim", 0) if VECTOR_STORE.vocab else 0,
-        "api_key_mode": "开发模式(无强制鉴权)" if API_KEY == "dev-only-key-change-in-prod" else "生产模式(已开启鉴权)",
+        "api_key_mode": "开发模式(无强制鉴权)" if not is_prod else "生产模式(已开启鉴权)",
         "feishu_configured": bool(FEISHU_APP_ID and FEISHU_APP_SECRET),
+        "need_api_key": is_prod,
+        "api_key_hint": (
+            "开发模式：API Key 留空即可（后端自动跳过鉴权）"
+            if not is_prod
+            else "生产模式：请在 ⚙️ 设置 tab 填入 API Key（后端 API_KEY 环境变量的值）"
+        ),
     }
 
 # ── 知识库文档管理 ──
