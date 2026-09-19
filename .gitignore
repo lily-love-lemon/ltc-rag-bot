@@ -1,0 +1,10 @@
+# Secrets & local data (never commit)
+.env
+.env.*
+chroma_data/
+__pycache__/
+*.pyc
+.workbuddy/
+node_modules/
+*.log
+.DS_Store

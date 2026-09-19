@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LTC RAG Bot · 深空指挥舱 效果图 v2</title>
+<style>
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-500.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.0.13/400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.0.13/500.css');
+
+:root{
+  --bg:#0B0E13; --panel:#10141B; --panel2:#151B25; --raise:#1A2130;
+  --line:#222B3A; --line2:#2C3850;
+  --ink:#E8EDF6; --ink2:#93A0B4; --ink3:#5C6activate880;
+  --ink3:#5C6880;
+  --acc:#4C8DFF; --acc-soft:rgba(76,141,255,.12);
+  --ok:#2BD590; --ok-soft:rgba(43,213,144,.12);
+  --warn:#F5A623; --warn-soft:rgba(245,166,35,.12);
+  --bad:#FF5C5C; --bad-soft:rgba(255,92,92,.12);
+  --sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'IBM Plex Mono','SF Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13.5px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px;background-position:-1px -1px}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(1200px 500px at 30% -10%,rgba(76,141,255,.07),transparent 60%);pointer-events:none}
+
+/* ── 骨架 ── */
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh;position:relative}
+.side{background:rgba(16,20,27,.92);border-right:1px solid var(--line);padding:26px 0 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;backdrop-filter:blur(6px)}
+.main{padding:0 40px 60px;max-width:1280px}
+
+/* 侧栏 */
+.brand{padding:0 22px 22px;border-bottom:1px solid var(--line)}
+.mark{width:36px;height:36px;border:1px solid var(--acc);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:500;font-size:15px;color:var(--acc);margin-bottom:14px;position:relative;clip-path:polygon(0 0,100% 0,100% 70%,70% 100%,0 100%)}
+.brand h1{font-size:15.5px;font-weight:500;letter-spacing:1px}
+.brand .sub{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:3px;margin-top:3px}
+.nav{padding:14px 10px;flex:1}
+.nav .group{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:3px;padding:0 12px;margin:16px 0 6px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;color:var(--ink2);font-size:13px;cursor:pointer;text-decoration:none;border-left:2px solid transparent;transition:all .15s;clip-path:polygon(0 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%)}
+.nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav a:hover{background:var(--panel2);color:var(--ink)}
+.nav a.on{background:var(--acc-soft);color:var(--acc);border-left-color:var(--acc)}
+.side-foot{padding:14px 22px 0;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--ink3);line-height:2}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:6px;box-shadow:0 0 6px var(--ok)}
+.dot.warn{background:var(--warn);box-shadow:0 0 6px var(--warn)}
+
+/* 顶栏 */
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:24px 0 16px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.crumb{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:3px;margin-bottom:6px}
+.topbar h2{font-size:20px;font-weight:500;letter-spacing:1px}
+.pill{font-family:var(--mono);font-size:10px;padding:3px 10px;border:1px solid var(--line2);color:var(--ink2);border-radius:3px;letter-spacing:1px}
+
+/* 按钮 */
+.btn{background:var(--acc);color:#fff;border:1px solid var(--acc);border-radius:3px;padding:8px 18px;font-size:12.5px;font-family:var(--mono);letter-spacing:1px;cursor:pointer;transition:all .15s;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%)}
+.btn:hover{background:#3A7AE8}
+.btn.ghost{background:transparent;color:var(--ink2);border-color:var(--line2)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink3)}
+.btn.sm{padding:4px 11px;font-size:10.5px}
+
+/* 卡片 + 角括号 */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:18px 20px;position:relative}
+.card::before,.card::after{content:'';position:absolute;width:10px;height:10px;border-color:var(--line2);border-style:solid;pointer-events:none}
+.card::before{top:-1px;left:-1px;border-width:1.5px 0 0 1.5px}
+.card::after{bottom:-1px;right:-1px;border-width:0 1.5px 1.5px 0}
+.card h3{font-size:13.5px;font-weight:500;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.card h3::before{content:'';width:3px;height:12px;background:var(--acc)}
+.card .hint{font-size:11.5px;color:var(--ink3);margin:3px 0 14px;font-family:var(--mono)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1.65fr 1fr;gap:12px}
+
+/* KPI */
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi .lb{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;display:flex;justify-content:space-between}
+.kpi .num{font-family:var(--mono);font-size:28px;font-weight:500;margin-top:6px;letter-spacing:-.5px}
+.kpi .num small{font-size:12px;color:var(--ink3);font-weight:400}
+.kpi .foot{font-size:11px;color:var(--ink2);margin-top:1px}
+.kpi svg.spark{position:absolute;right:10px;bottom:10px;opacity:.85}
+.c-acc{color:var(--acc)}.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}
+
+/* 状态行 */
+.sysline{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.sysitem{font-family:var(--mono);font-size:10.5px;color:var(--ink2);border:1px solid var(--line);background:var(--panel2);border-radius:3px;padding:5px 11px;display:flex;align-items:center;gap:7px}
+.sysitem b{font-weight:500;color:var(--ink)}
+
+/* pipeline */
+.pipe{display:flex;align-items:center;gap:0;margin:16px 4px 4px}
+.node{border:1px solid var(--line2);background:var(--panel2);border-radius:3px;padding:8px 13px;font-family:var(--mono);font-size:10.5px;color:var(--ink);position:relative;white-space:nowrap}
+.node .st{display:block;font-size:9px;color:var(--ok);letter-spacing:1px;margin-top:2px}
+.link{flex:1;height:1px;background:var(--line2);position:relative;min-width:14px}
+.link::after{content:'▸';position:absolute;right:-2px;top:-7px;color:var(--ink3);font-size:9px}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:2px;font-weight:400;padding:8px 10px;border-bottom:1px solid var(--line2)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:var(--panel2)}
+.mono{font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.preview{color:var(--ink2);font-size:12px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-family:var(--mono);font-size:9.5px;padding:2px 8px;border-radius:3px;letter-spacing:1px}
+.b-ok{background:var(--ok-soft);color:var(--ok);border:1px solid rgba(43,213,144,.3)}
+.b-warn{background:var(--warn-soft);color:var(--warn);border:1px solid rgba(245,166,35,.3)}
+.b-bad{background:var(--bad-soft);color:var(--bad);border:1px solid rgba(255,92,92,.3)}
+.b-info{background:var(--acc-soft);color:var(--acc);border:1px solid rgba(76,141,255,.3)}
+.b-gray{background:var(--panel2);color:var(--ink3);border:1px solid var(--line2)}
+
+/* 问答指挥条 */
+.cmd{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line2);border-radius:6px;padding:18px 20px;position:relative}
+.cmd::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--acc),transparent 70%)}
+.cmd:focus-within{border-color:var(--acc)}
+.cmd textarea{width:100%;border:none;outline:none;resize:none;font-family:var(--sans);font-size:15px;background:transparent;color:var(--ink);line-height:1.7}
+.cmd textarea::placeholder{color:var(--ink3)}
+.cmd .foot{display:flex;align-items:center;gap:14px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.opt{font-family:var(--mono);font-size:10.5px;color:var(--ink2);display:flex;align-items:center;gap:7px;cursor:pointer}
+.sw{position:relative;width:30px;height:16px;background:var(--raise);border:1px solid var(--line2);border-radius:99px}
+.sw::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--ink3);transition:all .15s}
+.sw.on{background:rgba(43,213,144,.2);border-color:var(--ok)}
+.sw.on::after{left:15px;background:var(--ok)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+.chip{font-family:var(--mono);font-size:11px;color:var(--ink2);border:1px solid var(--line2);background:var(--panel);border-radius:3px;padding:5px 13px;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--acc);color:var(--acc)}
+
+/* 对话 */
+.msg-u{display:flex;justify-content:flex-end;margin:16px 0 8px}
+.msg-u .b{background:var(--raise);border:1px solid var(--line2);border-radius:4px 4px 0 4px;padding:9px 15px;font-size:13px;max-width:72%}
+.msg-a{margin:8px 0}
+.msg-a .who{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;margin-bottom:6px;display:flex;gap:10px;align-items:center}
+.ans{background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--acc);border-radius:0 4px 4px 0;padding:15px 18px;font-size:13px;line-height:1.85}
+.ans .ref{background:var(--panel2);border:1px solid var(--line);border-left:2px solid var(--acc);border-radius:0 3px 3px 0;padding:8px 12px;margin:10px 0;font-size:12px;color:var(--ink2)}
+.cites{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
+.cite{font-family:var(--mono);font-size:10px;color:var(--ink2);border:1px solid var(--line2);border-radius:3px;padding:3px 9px}
+.cite b{color:var(--acc);font-weight:500}
+.cite.rej{color:var(--warn);border-color:var(--warn)}
+
+/* 得分条 */
+.sbar{margin:9px 0}
+.sbar .lb{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--ink2);margin-bottom:3px}
+.track{height:5px;background:var(--raise);border-radius:2px;overflow:hidden}
+.fill{height:100%;background:var(--acc)}
+.fill.g{background:var(--ok)}
+
+/* 上传 */
+.drop{border:1.5px dashed var(--line2);background:var(--panel);border-radius:6px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop:hover{border-color:var(--acc);background:var(--panel2)}
+.drop .big{font-size:14px;font-weight:500;margin:8px 0 3px}
+.drop .sm{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+.drop .grid-deco{position:absolute;inset:6px;border:1px solid var(--line);border-radius:4px;pointer-events:none;opacity:.4}
+
+input[type=text],select,textarea{background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:8px 12px;color:var(--ink);font-family:var(--sans);font-size:12.5px;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+
+/* 编辑器 */
+.editor{background:#0A0D12;border:1px solid var(--line);border-radius:4px;padding:18px 20px;font-family:var(--mono);font-size:12px;line-height:2.1;color:#C9D4E5}
+.editor .v{color:var(--warn)}
+.editor .cm{color:#4A5568}
+
+/* 迷你环 */
+.ring{transform:rotate(-90deg)}
+
+/* 视图 */
+.view{display:none}.view.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.note{margin-top:36px;border-top:1px solid var(--line);padding-top:16px;font-size:11.5px;color:var(--ink3);line-height:2}
+.note b{color:var(--ink2)}
+@media (max-width:1080px){.app{grid-template-columns:60px 1fr}.side .brand h1,.side .brand .sub,.nav a span,.nav .group,.side-foot{display:none}.main{padding:0 18px 40px}.grid4,.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="side">
+  <div class="brand">
+    <div class="mark">LTC</div>
+    <h1>LTC RAG Bot</h1>
+    <div class="sub">KNOWLEDGE OPS CONSOLE</div>
+  </div>
+  <nav class="nav">
+    <div class="group">CORE</div>
+    <a class="on" data-v="chat" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>问答指挥台</span></a>
+    <a data-v="dash" onclick="go('dash')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>运行总览</span></a>
+    <div class="group">KNOWLEDGE</div>
+    <a data-v="kb" onclick="go('kb')"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>文档资产</span></a>
+    <a data-v="chunks" onclick="go('chunks')"><svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="16" y2="12"/><line x1="4" y1="17" x2="18" y2="17"/></svg><span>切片管理</span></a>
+    <a data-v="prompt" onclick="go('prompt')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>提示词工程</span></a>
+    <div class="group">OPS</div>
+    <a data-v="sys" onclick="go('sys')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>系统运维</span></a>
+  </nav>
+  <div class="side-foot">
+    <div><span class="dot"></span>PROD · ONLINE</div>
+    <div>v4.1 · build 021</div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- ══════ 视图 1：问答指挥台（核心前置）══════ -->
+<section class="view on" id="v-chat">
+  <div class="topbar">
+    <div>
+      <div class="crumb">RAG CONSOLE // LIVE</div>
+      <h2>问答指挥台</h2>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="pill">207 CHUNKS LOADED</span>
+      <span class="pill" style="color:var(--ok);border-color:rgba(43,213,144,.4)">ENGINE READY</span>
+    </div>
+  </div>
+
+  <div class="cmd">
+    <textarea rows="2" placeholder="⌘K 向知识库提问 —— 207 条切片 · bge-m3 检索 · GLM-4-Flash 生成"></textarea>
+    <div class="foot">
+      <span class="opt">RERANK <span class="sw on"></span></span>
+      <span class="opt">TOP-K <b style="color:var(--acc)">5</b></span>
+      <span class="opt">STRATEGY <b style="color:var(--acc)">AUTO</b></span>
+      <span style="flex:1"></span>
+      <span class="mono" style="font-size:10px;color:var(--ink3)">ENTER ↵ EXECUTE</span>
+      <button class="btn sm">EXECUTE</button>
+    </div>
+  </div>
+  <div class="chips">
+    <span class="chip">▸ 核心 FABE 是什么</span>
+    <span class="chip">▸ POC 试用周期多长</span>
+    <span class="chip">▸ 交付 7 文档有哪些</span>
+    <span class="chip">▸ 私有化部署怎么选型</span>
+    <span class="chip">▸ RAG 和直接问大模型的区别</span>
+  </div>
+
+  <div class="grid2" style="margin-top:18px;grid-template-columns:1.7fr 1fr">
+    <div>
+      <div class="msg-u"><div class="b">RAG 检索增强是怎么工作的？和我们直接问大模型有什么区别？</div></div>
+      <div class="msg-a">
+        <div class="who"><span style="color:var(--acc)">◆ AGENT</span><span>1.6s</span><span class="badge b-ok" style="margin-left:4px">CACHE HIT</span><span class="badge b-ok" style="margin-left:4px">TOKENS SAVED 1,840</span></div>
+        <div class="ans">
+          RAG（Retrieval-Augmented Generation）的工作方式是<b>「先查资料，再回答」</b>：
+          <div class="ref">你的问题被向量化后在 207 条切片中三路融合检索（语义向量 + BM25 关键词 + RRF 重排），命中原文作为上下文交给大模型，模型只依据资料作答并标注引用。</div>
+          与直接问大模型的区别：直接问靠模型通用记忆，容易过时、无法引用私有文档；RAG 回答<b>可溯源、可更新、可控</b>——知识更新只需入库文档，无需重训模型。
+          <div class="cites">
+            <span class="cite"><b>0.92</b> FDE知识包.md #041</span>
+            <span class="cite"><b>0.87</b> 零成本30天FDE案例.md #117</span>
+            <span class="cite"><b>0.81</b> 项目汇总.md #008</span>
+          </div>
+        </div>
+      </div>
+      <div class="msg-u"><div class="b">没有显卡能不能跑大模型？</div></div>
+      <div class="msg-a">
+        <div class="who"><span style="color:var(--warn)">◆ GUARDRAIL</span><span>0.3s</span><span class="badge b-warn" style="margin-left:4px">NO LLM CALL</span><span class="badge b-warn" style="margin-left:4px">TOKENS SAVED 1,600</span></div>
+        <div class="ans" style="border-left-color:var(--warn)">
+          当前知识库中没有「显卡 / 硬件部署」相关内容，基于资料无法回答。
+          <div class="cites"><span class="cite rej">⊘ KB NOT COVERED · REJECTED（拒答阈值生效）</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <h3>检索调试</h3>
+        <div class="hint">LAST QUERY · 3-STAGE RECALL</div>
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:2px;margin:10px 0 2px">① VECTOR · bge-m3</div>
+        <div class="sbar"><div class="lb"><span>#041 FDE知识包</span><b>0.92</b></div><div class="track"><div class="fill" style="width:92%"></div></div></div>
+        <div class="sbar"><div class="lb"><span>#117 FDE案例</span><b>0.87</b></div><div class="track"><div class="fill" style="width:87%"></div></div></div>
+        <div class="sbar"><div class="lb"><span>#008 项目汇总</span><b>0.81</b></div><div class="track"><div class="fill" style="width:81%"></div></div></div>
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:2px;margin:12px 0 2px">② BM25 · KEYWORD</div>
+        <div class="sbar"><div class="lb"><span>#041 FDE知识包</span><b>0.74</b></div><div class="track"><div class="fill g" style="width:74%"></div></div></div>
+        <div class="sbar"><div class="lb"><span>#008 项目汇总</span><b>0.63</b></div><div class="track"><div class="fill g" style="width:63%"></div></div></div>
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:2px;margin:12px 0 2px">③ RRF FUSION → RERANK</div>
+        <div class="sbar"><div class="lb"><span>#041 → FINAL</span><b>0.96</b></div><div class="track"><div class="fill" style="width:96%;background:linear-gradient(90deg,var(--acc),var(--ok))"></div></div></div>
+      </div>
+      <div class="card">
+        <h3>会话参数</h3>
+        <div class="hint">REALTIME · SENT WITH REQUEST</div>
+        <table>
+          <tr><td style="border:none;padding:6px 2px">rerank</td><td style="border:none;padding:6px 2px;text-align:right"><span class="badge b-ok">ON</span></td></tr>
+          <tr><td style="border:none;padding:6px 2px">embedding</td><td style="border:none;padding:6px 2px;text-align:right" class="mono">bge-m3·1024</td></tr>
+          <tr><td style="border:none;padding:6px 2px">llm</td><td style="border:none;padding:6px 2px;text-align:right" class="mono">glm-4-flash</td></tr>
+          <tr><td style="border:none;padding:6px 2px">拒答阈值</td><td style="border:none;padding:6px 2px;text-align:right"><span class="badge b-warn">NOT SET</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 视图 2：运行总览 ══════ -->
+<section class="view" id="v-dash">
+  <div class="topbar">
+    <div><div class="crumb">MISSION CONTROL // 2026-09-18 FRI</div><h2>运行总览</h2></div>
+    <div style="display:flex;gap:8px"><span class="pill">UPTIME 99.9%</span><button class="btn sm" onclick="go('chat')">发起问答</button></div>
+  </div>
+
+  <div class="grid4">
+    <div class="kpi">
+      <div class="lb"><span>知识切片</span><span class="c-ok">+3 TODAY</span></div>
+      <div class="num">207</div>
+      <div class="foot">6 文档 · 124K chars</div>
+      <svg class="spark" width="72" height="26"><polyline points="0,20 12,18 24,19 36,12 48,14 60,8 72,5" style="fill:none;stroke:var(--ok);stroke-width:1.5"/></svg>
+    </div>
+    <div class="kpi">
+      <div class="lb"><span>问答次数 · 7D</span><span class="c-acc">↑ 23%</span></div>
+      <div class="num">86</div>
+      <div class="foot">平均响应 1.8s</div>
+      <svg class="spark" width="72" height="26"><polyline points="0,22 12,20 24,16 36,17 48,10 60,12 72,4" style="fill:none;stroke:var(--acc);stroke-width:1.5"/></svg>
+    </div>
+    <div class="kpi">
+      <div class="lb"><span>缓存命中率</span><span class="c-ok">HEALTHY</span></div>
+      <div class="num">42<small>%</small></div>
+      <div class="foot">3 快照 · 1 hot · 2 stale</div>
+      <svg class="spark" width="72" height="26"><polyline points="0,8 12,10 24,7 36,12 48,9 60,11 72,9" style="fill:none;stroke:var(--ok);stroke-width:1.5"/></svg>
+    </div>
+    <div class="kpi">
+      <div class="lb"><span>本月节省 TOKENS</span><span class="c-ok">EST.</span></div>
+      <div class="num c-ok">115K</div>
+      <div class="foot">缓存 42% · 拒答短路 30% 查询</div>
+      <svg class="spark" width="72" height="26"><polyline points="0,22 12,18 24,19 36,10 48,12 60,6 72,3" style="fill:none;stroke:var(--ok);stroke-width:1.5"/></svg>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <h3>系统链路</h3>
+    <div class="hint">INGESTION → RETRIEVAL → GENERATION · ALL GREEN</div>
+    <div class="pipe">
+      <span class="node">文档入库<span class="st">● 6 FILES</span></span><span class="link"></span>
+      <span class="node">切片 207<span class="st">● 3 STRATEGIES</span></span><span class="link"></span>
+      <span class="node">向量化 bge-m3<span class="st">● 1024-D · 9.9S REBUILD</span></span><span class="link"></span>
+      <span class="node">融合检索<span class="st">● VECTOR+BM25+RRF</span></span><span class="link"></span>
+      <span class="node">重排<span class="st">● ON</span></span><span class="link"></span>
+      <span class="node">生成 GLM-4F<span class="st">● 1.8S AVG</span></span>
+    </div>
+    <div class="sysline">
+      <span class="sysitem"><span class="dot"></span>COS <b>/mnt/chroma</b></span>
+      <span class="sysitem"><span class="dot"></span>AUTH <b>ON</b></span>
+      <span class="sysitem"><span class="dot warn"></span>CACHE STALE <b>2</b></span>
+      <span class="sysitem"><span class="dot warn"></span>GUARDRAIL <b>NOT SET</b></span>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>最近问答</h3>
+      <div class="hint">WITH CITATIONS · CLICK TO REPLAY RETRIEVAL</div>
+      <table>
+        <tr><th>QUESTION</th><th>REFS</th><th>TIME</th><th>SRC</th></tr>
+        <tr><td class="preview">RAG 检索增强是怎么工作的？</td><td class="mono">3</td><td class="mono">1.6s</td><td><span class="badge b-ok">CACHE</span></td></tr>
+        <tr><td class="preview">产品部署的核心 FABE 流程？</td><td class="mono">4</td><td class="mono">2.3s</td><td><span class="badge b-info">LIVE</span></td></tr>
+        <tr><td class="preview">交付文档 7 件套分别是什么？</td><td class="mono">5</td><td class="mono">1.9s</td><td><span class="badge b-info">LIVE</span></td></tr>
+        <tr><td class="preview">POC 试用周期一般多长？</td><td class="mono">2</td><td class="mono">1.4s</td><td><span class="badge b-ok">CACHE</span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>告警与待办</h3>
+      <div class="hint">AUTO-GENERATED FROM SYSTEM STATE</div>
+      <table>
+        <tr><td style="border:none"><span class="badge b-warn">SUGGEST</span></td><td style="border:none" class="preview">2 条缓存快照已失效（知识库指纹变更）</td><td style="border:none;text-align:right"><button class="btn sm ghost">清理</button></td></tr>
+        <tr><td style="border:none"><span class="badge b-warn">RISK</span></td><td style="border:none" class="preview">拒答阈值未配置，KB 外问题会被自由发挥</td><td style="border:none;text-align:right"><button class="btn sm ghost">配置</button></td></tr>
+        <tr><td style="border:none"><span class="badge b-ok">OK</span></td><td style="border:none" class="preview">向量库与文档一致 · 指纹 a3f8…c21d</td><td style="border:none"></td></tr>
+        <tr><td style="border:none"><span class="badge b-ok">OK</span></td><td style="border:none" class="preview">COS 挂载正常 · 磁盘占用 828KB</td><td style="border:none"></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 视图 3：文档资产（增删改）══════ -->
+<section class="view" id="v-kb">
+  <div class="topbar">
+    <div><div class="crumb">LIBRARY // CRUD ENABLED</div><h2>文档资产</h2></div>
+    <div style="display:flex;gap:8px"><span class="pill">6 FILES · 207 CHUNKS</span><button class="btn sm ghost" onclick="go('chunks')">切片视图</button></div>
+  </div>
+
+  <div class="drop">
+    <div class="grid-deco"></div>
+    <svg viewBox="0 0 24 24" style="width:26px;height:26px;stroke:var(--acc);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <div class="big">拖入文档 / 点击上传</div>
+    <div class="sm">.MD · .TXT · .PDF — ≤5MB — 自动切片 + 向量化入库</div>
+  </div>
+
+  <div class="card" style="margin:12px 0">
+    <h3>快速粘贴入库</h3>
+    <div class="hint">INLINE TEXT → AUTO CHUNK → VECTORIZE</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input type="text" placeholder="来源标题（如：客户答疑 0918）" style="flex:1">
+      <select><option>STRATEGY · 标准 500 字</option><option>长文 900 字</option><option>短句 200 字</option></select>
+    </div>
+    <textarea rows="3" placeholder="粘贴文本内容…" style="width:100%;resize:vertical"></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="btn sm ghost">预览切片</button>
+      <button class="btn sm">INGEST</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>全部文档</h3>
+    <div class="hint">RENAME / REPLACE / DELETE — 替换 = 新内容重切片后原子替换旧切片</div>
+    <table>
+      <tr><th>DOCUMENT</th><th>TYPE</th><th>CHUNKS</th><th>CHARS</th><th>INGESTED</th><th style="text-align:right">OPERATIONS</th></tr>
+      <tr>
+        <td class="preview" style="max-width:220px">FDE知识包.md</td><td><span class="badge b-info">MD</span></td>
+        <td class="mono">120</td><td class="mono">58,204</td><td class="mono">09-18 13:57</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">删除</button></td>
+      </tr>
+      <tr>
+        <td class="preview" style="max-width:220px">零成本30天FDE案例.md</td><td><span class="badge b-info">MD</span></td>
+        <td class="mono">52</td><td class="mono">31,880</td><td class="mono">09-18 13:57</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">删除</button></td>
+      </tr>
+      <tr>
+        <td class="preview" style="max-width:220px">项目汇总.md</td><td><span class="badge b-info">MD</span></td>
+        <td class="mono">28</td><td class="mono">15,932</td><td class="mono">09-18 13:57</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">删除</button></td>
+      </tr>
+      <tr>
+        <td class="preview" style="max-width:220px">部署与运维手册.md</td><td><span class="badge b-info">MD</span></td>
+        <td class="mono">3</td><td class="mono">2,410</td><td class="mono">09-18 13:57</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">删除</button></td>
+      </tr>
+      <tr>
+        <td class="preview" style="max-width:220px">销售话术.txt</td><td><span class="badge b-gray">TXT</span></td>
+        <td class="mono">1</td><td class="mono">612</td><td class="mono">09-18 13:57</td>
+        <td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">删除</button></td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ══════ 视图 4：切片管理 ══════ -->
+<section class="view" id="v-chunks">
+  <div class="topbar">
+    <div><div class="crumb">CHUNKS // 207 RECORDS · PAGE 1/21</div><h2>切片管理</h2></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn sm ghost">重建向量</button>
+      <button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">删除选中 (1)</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" placeholder="搜索切片内容…" style="flex:1;min-width:200px" value="检索 部署">
+      <select><option>ALL SOURCES</option><option>FDE知识包.md</option></select>
+      <select><option>ALL STRATEGIES</option><option>标准</option></select>
+    </div>
+    <table>
+      <tr><th style="width:26px"><input type="checkbox" checked style="accent-color:var(--acc)"></th><th>ID</th><th>PREVIEW</th><th>SOURCE</th><th>STRATEGY</th><th>LEN</th><th>DATE</th><th></th></tr>
+      <tr><td><input type="checkbox" checked style="accent-color:var(--acc)"></td><td class="mono">#041</td><td class="preview">RAG 检索增强生成的核心流程：解析 → 分块 → 向量化 → 混合检索 → 重排 → 生成…</td><td class="mono">FDE知识包.md</td><td><span class="badge b-info">标准</span></td><td class="mono">512</td><td class="mono">09-18</td><td><button class="btn sm ghost">编辑</button></td></tr>
+      <tr><td><input type="checkbox" style="accent-color:var(--acc)"></td><td class="mono">#042</td><td class="preview">向量库选型决策树：数据量 &lt; 10 万条用本地轻量方案，企业级持久化选 Chroma…</td><td class="mono">FDE知识包.md</td><td><span class="badge b-info">标准</span></td><td class="mono">498</td><td class="mono">09-18</td><td><button class="btn sm ghost">编辑</button></td></tr>
+      <tr><td><input type="checkbox" style="accent-color:var(--acc)"></td><td class="mono">#118</td><td class="preview">回滚预案三要素：触发条件、回滚步骤、验证标准。发布前必须先写回滚方案…</td><td class="mono">FDE案例.md</td><td><span class="badge b-info">标准</span></td><td class="mono">487</td><td class="mono">09-18</td><td><button class="btn sm ghost">编辑</button></td></tr>
+      <tr><td><input type="checkbox" style="accent-color:var(--acc)"></td><td class="mono">#008</td><td class="preview">LTC（Lead to Cash）从线索到回款全流程：线索 → 商机 → 报价 → 合同 → 交付…</td><td class="mono">项目汇总.md</td><td><span class="badge b-info">标准</span></td><td class="mono">530</td><td class="mono">09-18</td><td><button class="btn sm ghost">编辑</button></td></tr>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <span class="mono" style="font-size:10px">SELECTED 1 · PAGE SIZE 10</span>
+      <div style="display:flex;gap:6px"><button class="btn sm ghost">‹ PREV</button><button class="btn sm">1</button><button class="btn sm ghost">2</button><button class="btn sm ghost">… 21</button><button class="btn sm ghost">NEXT ›</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 视图 5：提示词工程 ══════ -->
+<section class="view" id="v-prompt">
+  <div class="topbar">
+    <div><div class="crumb">PROMPT // fabe.txt · 412 CHARS</div><h2>提示词工程</h2></div>
+    <div style="display:flex;gap:8px"><button class="btn sm ghost">恢复默认</button><button class="btn sm">SAVE</button></div>
+  </div>
+  <div class="grid2" style="grid-template-columns:1.7fr 1fr">
+    <div>
+      <div class="editor">你是一个企业知识库问答助手。<br>
+<span class="cm">// 边界：只依据资料回答</span><br>
+只依据【检索资料】回答；资料不足时明确说"知识库中暂无相关内容"。<br>
+<span class="cm">// 拒答阈值</span><br>
+最高相关度 &lt; <span class="v">{{REJECT_THRESHOLD}}</span> 时拒答，不得自由发挥。<br>
+<span class="cm">// 输出格式</span><br>
+① 结论一句话 ② 依据（引用 <span class="v">{{SOURCES}}</span> 编号）③ 步骤（可选）。</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+        <span class="badge b-ok">SYNTAX OK</span><span class="mono" style="font-size:10px">412 CHARS · 6 VARS</span><span style="flex:1"></span><span class="mono" style="font-size:10px;color:var(--ink3)">SAVED 09-18 17:42</span>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <h3>变量</h3>
+        <div class="hint">INJECTED AT QUERY TIME</div>
+        <table>
+          <tr><td style="border:none;padding:5px 0"><span class="mono" style="color:var(--warn)">{{SOURCES}}</span></td><td style="border:none;padding:5px 0" class="preview">检索片段</td></tr>
+          <tr><td style="border:none;padding:5px 0"><span class="mono" style="color:var(--warn)">{{QUESTION}}</span></td><td style="border:none;padding:5px 0" class="preview">用户问题</td></tr>
+          <tr><td style="border:none;padding:5px 0"><span class="mono" style="color:var(--warn)">{{REJECT_THRESHOLD}}</span></td><td style="border:none;padding:5px 0" class="preview">拒答阈值 0-1</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>调优建议</h3>
+        <div class="hint">FROM LAST 20 QUERIES</div>
+        <table>
+          <tr><td style="border:none"><span class="badge b-warn">RISK</span></td><td style="border:none" class="preview">未设拒答阈值，KB 外问题自由发挥</td></tr>
+          <tr><td style="border:none"><span class="badge b-info">TIP</span></td><td style="border:none" class="preview">回答均值 214 字，可限 150 字提速</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 视图 6：系统运维 ══════ -->
+<section class="view" id="v-sys">
+  <div class="topbar">
+    <div><div class="crumb">OPS // SYSTEM & CACHE</div><h2>系统运维</h2></div>
+    <span class="pill">BUILD ltc-rag-bot-021</span>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <h3>省算策略 · Token 经济</h3>
+    <div class="hint">4-LAYER FUNNEL · 优先用最便宜的层回答，LLM 是最后一层</div>
+    <div class="grid4" style="grid-template-columns:repeat(4,1fr);margin:4px 0 8px">
+      <div class="kpi" style="padding:12px 14px">
+        <div class="lb">L0 精确缓存</div><div class="num c-ok" style="font-size:20px">0 <small>tok</small></div>
+        <div class="foot">同问法直返快照 · 42%</div>
+      </div>
+      <div class="kpi" style="padding:12px 14px">
+        <div class="lb">L1 语义近似</div><div class="num c-ok" style="font-size:20px">~0 <small>tok</small></div>
+        <div class="foot">相似问 ≥0.92 命中 · 12%</div>
+      </div>
+      <div class="kpi" style="padding:12px 14px">
+        <div class="lb">L2 拒答短路</div><div class="num c-warn" style="font-size:20px">0 <small>tok</small></div>
+        <div class="foot">低分不调 LLM · 30%</div>
+      </div>
+      <div class="kpi" style="padding:12px 14px">
+        <div class="lb">L3 完整 RAG</div><div class="num c-acc" style="font-size:20px">1.6K <small>tok</small></div>
+        <div class="foot">仅 18% 查询走到这层</div>
+      </div>
+    </div>
+    <div class="sysline">
+      <span class="sysitem"><span class="dot"></span>预制标准答案 <b>5 条已固化</b></span>
+      <span class="sysitem"><span class="dot"></span>上下文预算 <b>≤1200 tok</b></span>
+      <span class="sysitem"><span class="dot"></span>答案限长 <b>150 字</b></span>
+      <span class="sysitem"><span class="dot warn"></span>语义缓存阈值 <b>0.92 未启用</b></span>
+      <span class="sysitem"><span class="dot warn"></span>拒答阈值 <b>未启用</b></span>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:12px">
+    <div class="card">
+      <h3>Embedding 引擎</h3>
+      <div class="hint">SWITCH → AUTO FULL REBUILD → PERSISTED ACROSS RESTARTS</div>
+      <table>
+        <tr><td style="border:none;padding:8px 0"><b style="font-weight:500">当前</b> <span class="mono">BAAI/bge-m3 · 1024-D · SiliconFlow API</span></td><td style="border:none;text-align:right"><span class="badge b-ok">ACTIVE</span></td></tr>
+        <tr><td style="border:none;padding:8px 0" class="preview">备选 TF-IDF（本地 · 零依赖 · 离线可用）</td><td style="border:none;text-align:right"><button class="btn sm ghost">SWITCH</button></td></tr>
+      </table>
+      <div style="display:flex;align-items:center;margin-top:8px"><span class="mono" style="font-size:10px;color:var(--ink3)">LAST REBUILD 09-18 22:41 · 9.9S · 207 DOCS</span><span style="flex:1"></span><button class="btn sm ghost">REBUILD NOW</button></div>
+    </div>
+    <div class="card">
+      <h3>答案缓存</h3>
+      <div class="hint">SNAPSHOT · AUTO-INVALIDATED BY KB FINGERPRINT</div>
+      <div class="grid4" style="grid-template-columns:repeat(3,1fr);margin:4px 0 8px">
+        <div class="kpi" style="padding:10px 12px"><div class="lb">SNAPSHOTS</div><div class="num" style="font-size:22px">3</div></div>
+        <div class="kpi" style="padding:10px 12px"><div class="lb">HOT</div><div class="num c-ok" style="font-size:22px">1</div></div>
+        <div class="kpi" style="padding:10px 12px"><div class="lb">STALE</div><div class="num c-warn" style="font-size:22px">2</div></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn sm ghost">清理失效</button><button class="btn sm ghost" style="color:var(--bad);border-color:rgba(255,92,92,.4)">清空全部</button></div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>环境</h3>
+      <div class="hint">READ-ONLY · MIRRORS CLOUDBASE CONSOLE</div>
+      <table>
+        <tr><td class="preview" style="border:none">ENV</td><td style="border:none;text-align:right" class="mono">lily0625ai-d1gp…41edd</td></tr>
+        <tr><td class="preview" style="border:none">SPEC</td><td style="border:none;text-align:right" class="mono">1C / 2GB · CONTAINER</td></tr>
+        <tr><td class="preview" style="border:none">STORAGE</td><td style="border:none;text-align:right" class="mono">COS → /mnt/chroma</td></tr>
+        <tr><td class="preview" style="border:none">PUBLIC ACCESS</td><td style="border:none;text-align:right"><span class="badge b-ok">ON + AUTH</span></td></tr>
+        <tr><td class="preview" style="border:none">VERSION</td><td style="border:none;text-align:right" class="mono">v4.1 · BUILD 021</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>发布与回滚</h3>
+      <div class="hint">ROLLBACK VIA rollback.sh ON SERVER</div>
+      <table>
+        <tr><td class="preview" style="border:none">回滚预案</td><td style="border:none;text-align:right"><span class="badge b-ok">READY</span></td></tr>
+        <tr><td class="preview" style="border:none">上线巡检 0/10/30/60min</td><td style="border:none;text-align:right"><span class="badge b-ok">READY</span></td></tr>
+        <tr><td class="preview" style="border:none">最近部署 09-18 22:41 · 021</td><td style="border:none;text-align:right"><span class="badge b-ok">零降级</span></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="note">
+  <b>方向 B · 深空指挥舱</b> — 石墨蓝黑底 + 细网格 + 钛蓝 accent + 切角几何 + 等宽数据字体；问答指挥台为默认首页，Command Bar 一键提问；总览带 sparkline 趋势、链路 pipeline、告警待办；文档资产支持 重命名/替换/删除 全 CRUD。本页为静态效果图（演示数据），确认后实施。
+</div>
+
+</main>
+</div>
+
+<script>
+function go(v){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.nav a').forEach(e=>e.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelector('.nav a[data-v="'+v+'"]').classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+{"audience":"项目接手人(WorkBuddy)","reader_task":"完整理解LTC RAG Bot项目现状、架构、踩坑和下一步计划，快速接手","genre_contract":null,"adapter":null,"presentation_mode":"rich","visual_plan":{"reason":"用whiteboard展示整体架构图和检索链路流程图，让接手人快速理解系统","blocks":[{"type":"whiteboard","min_count":2,"purpose":"1)系统架构总览图 2)RAG检索链路流程图"}]}}

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LTC RAG Bot · v3 双主题效果图（深空清爽 / 墨金高端）</title>
+<style>
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-500.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.0.13/chinese-simplified-600.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.0.13/400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.0.13/500.css');
+
+/* ══════════ 主题 A：深空·清爽（无全屏网格，极净） ══════════ */
+:root, [data-theme="dark"]{
+  --bg:#0C1016; --panel:#121821; --panel2:#171E29; --raise:#1D2534;
+  --line:#1F2836; --line2:#2A3547;
+  --ink:#EAF0FA; --ink2:#8E9CB2; --ink3:#5B6880;
+  --acc:#5B9BFF; --acc-soft:rgba(91,155,255,.10);
+  --ok:#3DDC97; --ok-soft:rgba(61,220,151,.10);
+  --warn:#F5A623; --warn-soft:rgba(245,166,35,.10);
+  --bad:#FF6B6B; --bad-soft:rgba(255,107,107,.10);
+  --side-bg:#0E131B; --side-ink:#EAF0FA;
+  --accent-line:var(--acc);
+  --serif:'Noto Serif SC',Georgia,serif;
+  --body-bg:none; --glow:radial-gradient(900px 420px at 22% -12%, rgba(91,155,255,.06), transparent 62%);
+  --card-deco:1px solid var(--line);
+  --radius:6px;
+  --shadow:none;
+}
+/* ══════════ 主题 B：墨金·高端（暖白 + 深色素材点缀） ══════════ */
+[data-theme="light"]{
+  --bg:#F6F4F0; --panel:#FFFFFF; --panel2:#FAF8F5; --raise:#1A1613;
+  --line:#E6E1D8; --line2:#D4CDBC;
+  --ink:#1A1613; --ink2:#6B645C; --ink3:#9C9489;
+  --acc:#A87C4F; --acc-soft:rgba(168,124,79,.10);
+  --ok:#2E7D5B; --ok-soft:rgba(46,125,91,.10);
+  --warn:#B7791F; --warn-soft:rgba(183,121,31,.12);
+  --bad:#B3402E; --bad-soft:rgba(179,64,46,.10);
+  --side-bg:#1A1613; --side-ink:#F5F1EA;
+  --accent-line:var(--acc);
+  --serif:'Noto Serif SC',Georgia,serif;
+  --body-bg:none; --glow:none;
+  --card-deco:1px solid var(--line);
+  --radius:4px;
+  --shadow:none;
+}
+[data-theme="light"] .side{background:var(--side-bg)!important}
+[data-theme="light"] .brand h1{color:var(--side-ink)}
+[data-theme="light"] .mark{color:#C9A227;border-color:#C9A227}
+[data-theme="light"] .nav a{color:#A79E92}
+[data-theme="light"] .nav a:hover{color:#F5F1EA;background:rgba(255,255,255,.05)}
+[data-theme="light"] .nav a.on{color:#C9A227;background:rgba(201,162,39,.12);border-left-color:#C9A227}
+[data-theme="light"] .nav .group{color:#7A7267}
+[data-theme="light"] .side-foot{color:#8A8175}
+[data-theme="light"] .card h3{font-family:var(--serif);font-weight:600}
+[data-theme="light"] .topbar h2{font-family:var(--serif);font-weight:600}
+[data-theme="light"] .kpi .num{font-family:var(--serif);font-weight:600}
+[data-theme="light"] .darkbar{background:#1A1613;color:#F5F1EA}
+[data-theme="light"] .cmd{background:#12100D;border:1px solid #2B251E}
+[data-theme="light"] .cmd::before{background:linear-gradient(90deg,#C9A227,transparent 65%)}
+[data-theme="light"] .cmd textarea{color:#F5F1EA}
+[data-theme="light"] .cmd textarea::placeholder{color:#6E6558}
+[data-theme="light"] .cmd .foot{border-top-color:#2B251E}
+[data-theme="light"] .kpi.dark{background:#1A1613;border-color:#2B251E}
+[data-theme="light"] .kpi.dark .lb{color:#A79E92}
+[data-theme="light"] .kpi.dark .num{color:#F5F1EA;font-family:var(--serif)}
+[data-theme="light"] .kpi.dark .foot{color:#A79E92}
+[data-theme="light"] .btn{background:#C9A227;border-color:#C9A227;color:#17130E}
+[data-theme="light"] .btn:hover{background:#B8901F}
+[data-theme="light"] table thead{display:none}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:'Noto Sans SC','PingFang SC',sans-serif;font-size:13.5px;line-height:1.65;-webkit-font-smoothing:antialiased;background-image:var(--body-bg)}
+body::before{content:'';position:fixed;inset:0;background:var(--glow);pointer-events:none;z-index:0}
+
+/* 主题切换按钮 */
+.theme-sw{position:fixed;right:22px;bottom:22px;z-index:500;display:flex;gap:6px;background:var(--panel);border:1px solid var(--line2);border-radius:99px;padding:5px}
+.theme-sw button{background:transparent;border:none;color:var(--ink2);font-size:12px;font-family:'Noto Sans SC',sans-serif;padding:6px 14px;border-radius:99px;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.theme-sw button.on{background:var(--acc);color:#fff}
+[data-theme="light"] .theme-sw button.on{color:#17130E}
+
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh;position:relative;z-index:1}
+.side{background:var(--side-bg);border-right:1px solid var(--line);padding:30px 0 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.main{padding:0 46px 70px;max-width:1240px;min-width:0}
+
+.brand{padding:0 24px 24px}
+.mark{width:38px;height:38px;border:1px solid var(--acc);border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--acc);margin-bottom:16px;letter-spacing:1px}
+.brand h1{font-size:16px;font-weight:500;letter-spacing:1.5px;color:var(--ink)}
+.brand .sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink3);letter-spacing:3.5px;margin-top:5px}
+.nav{padding:8px 12px;flex:1}
+.nav .group{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink3);letter-spacing:3px;padding:0 10px;margin:20px 0 8px}
+.nav a{display:flex;align-items:center;gap:11px;padding:9px 12px;color:var(--ink2);font-size:13px;cursor:pointer;border-left:2px solid transparent;border-radius:0 5px 5px 0;transition:all .16s}
+.nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav a:hover{background:var(--panel2);color:var(--ink)}
+.nav a.on{background:var(--acc-soft);color:var(--acc);border-left-color:var(--acc)}
+.side-foot{padding:16px 24px 0;border-top:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink3);line-height:2.2}
+
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:30px 0 18px;border-bottom:1px solid var(--line);margin-bottom:24px;gap:14px;flex-wrap:wrap}
+.crumb{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--ink3);letter-spacing:3px;margin-bottom:7px}
+.topbar h2{font-size:21px;font-weight:500;letter-spacing:1.5px}
+.pill{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 12px;border:1px solid var(--line2);color:var(--ink2);border-radius:99px;letter-spacing:1px;display:inline-block}
+.pill.ok{color:var(--ok);border-color:var(--ok)}
+.pill.acc{color:var(--acc);border-color:var(--acc)}
+
+.btn{background:var(--acc);color:#fff;border:1px solid var(--acc);border-radius:4px;padding:9px 20px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;letter-spacing:1.2px;cursor:pointer;transition:all .16s}
+.btn:hover{filter:brightness(1.12)}
+.btn.ghost{background:transparent;color:var(--ink2);border-color:var(--line2)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink3)}
+.btn.sm{padding:5px 13px;font-size:10.5px}
+
+.card{background:var(--panel);border:var(--card-deco);border-radius:var(--radius);padding:22px 24px}
+.card h3{font-size:13.5px;font-weight:500;letter-spacing:1px;display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.card h3::before{content:'';width:2px;height:13px;background:var(--acc)}
+.card .hint{font-size:11px;color:var(--ink3);margin:0 0 16px;font-family:'IBM Plex Mono',monospace;letter-spacing:.6px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1.7fr 1fr;gap:14px}
+.grid2even{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+.kpi{background:var(--panel);border:var(--card-deco);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+.kpi .lb{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--ink3);letter-spacing:2.5px;display:flex;justify-content:space-between}
+.kpi .num{font-family:'IBM Plex Mono',monospace;font-size:29px;font-weight:500;margin-top:8px;letter-spacing:-.5px;line-height:1.1}
+.kpi .num small{font-size:12px;color:var(--ink3);font-weight:400;margin-left:3px}
+.kpi .foot{font-size:11px;color:var(--ink2);margin-top:3px}
+.c-acc{color:var(--acc)}.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:var(--bad)}
+
+.sysline{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.sysitem{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);border:1px solid var(--line);border-radius:99px;padding:6px 14px;display:flex;align-items:center;gap:8px}
+.sysitem b{font-weight:500;color:var(--ink)}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block}
+.sdot.warn{background:var(--warn)}
+
+.pipe{display:flex;align-items:center;margin:18px 0 6px;flex-wrap:wrap}
+.node{border:1px solid var(--line2);border-radius:4px;padding:9px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink);white-space:nowrap}
+.node .st{display:block;font-size:8.5px;color:var(--ok);letter-spacing:1.5px;margin-top:3px}
+.link{flex:1;height:1px;background:var(--line2);position:relative;min-width:16px}
+.link::after{content:'▸';position:absolute;right:-2px;top:-6px;color:var(--ink3);font-size:8px}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink3);letter-spacing:2.5px;font-weight:400;padding:9px 10px;border-bottom:1px solid var(--line2)}
+td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:var(--panel2)}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2)}
+.preview{color:var(--ink2);font-size:12.5px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:3px 10px;border-radius:99px;letter-spacing:1px;display:inline-block}
+.b-ok{background:var(--ok-soft);color:var(--ok)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}
+.b-bad{background:var(--bad-soft);color:var(--bad)}
+.b-info{background:var(--acc-soft);color:var(--acc)}
+.b-gray{background:var(--panel2);color:var(--ink3);border:1px solid var(--line)}
+
+.cmd{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:20px 22px;position:relative}
+.cmd::before{content:'';position:absolute;top:0;left:22px;right:22px;height:2px;background:var(--acc);opacity:.85;border-radius:0 0 2px 2px}
+.cmd textarea{width:100%;border:none;outline:none;resize:none;font-family:'Noto Sans SC',sans-serif;font-size:15px;background:transparent;color:var(--ink);line-height:1.75}
+.cmd .foot{display:flex;align-items:center;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.opt{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.sw{position:relative;width:32px;height:17px;background:var(--raise);border:1px solid var(--line2);border-radius:99px;display:inline-block}
+.sw::after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:var(--ink3)}
+.sw.on{background:var(--ok-soft);border-color:var(--ok)}
+.sw.on::after{left:17px;background:var(--ok)}
+.chips{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0 0}
+.chip{font-size:12px;color:var(--ink2);border:1px solid var(--line2);border-radius:99px;padding:6px 16px;cursor:pointer;transition:all .16s}
+.chip:hover{border-color:var(--acc);color:var(--acc)}
+
+.msg-u{display:flex;justify-content:flex-end;margin:22px 0 10px}
+.msg-u .b{background:var(--raise);border:1px solid var(--line2);border-radius:6px 6px 1px 6px;padding:11px 17px;font-size:13.5px;max-width:70%}
+[data-theme="light"] .msg-u .b{background:#1A1613;color:#F5F1EA;border-color:#2B251E}
+.msg-a{margin:10px 0}
+.msg-a .who{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--ink3);letter-spacing:2px;margin-bottom:9px;display:flex;gap:11px;align-items:center;flex-wrap:wrap}
+.ans{background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--acc);border-radius:0 6px 6px 0;padding:18px 20px;font-size:13.5px;line-height:1.9}
+.ans.rejected{border-left-color:var(--warn)}
+.cites{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px;padding-top:13px;border-top:1px dashed var(--line2)}
+.cite{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink2);border:1px solid var(--line2);border-radius:4px;padding:4px 11px}
+.cite b{color:var(--acc);font-weight:500}
+.cite.rej{color:var(--warn);border-color:var(--warn)}
+
+.sbar{margin:10px 0}
+.sbar .lb{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink2);margin-bottom:4px}
+.track{height:5px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.fill{height:100%;background:var(--acc);border-radius:99px}
+
+.drop{border:1.5px dashed var(--line2);border-radius:8px;padding:34px;text-align:center;cursor:pointer;transition:all .18s}
+.drop:hover{border-color:var(--acc);background:var(--panel2)}
+.drop .big{font-size:14.5px;font-weight:500;margin:10px 0 4px}
+.drop .sm{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ink3)}
+
+.editor{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:18px 20px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2}
+.editor .v{color:var(--warn)}
+.editor .cm{color:var(--ink3)}
+[data-theme="light"] .editor{background:#12100D;color:#D8D2C8;border-color:#2B251E}
+
+.view{display:none}.view.on{display:block;animation:fade .28s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.note{margin-top:40px;border-top:1px solid var(--line);padding-top:16px;font-size:11.5px;color:var(--ink3);line-height:2}
+
+@media (max-width:1080px){.app{grid-template-columns:64px 1fr}.side .brand h1,.side .brand .sub,.nav a span,.nav .group,.side-foot{display:none}.main{padding:0 18px 44px}.grid4,.grid2,.grid2even{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="theme-sw">
+  <button class="on" onclick="setTheme('dark')">深空 · 清爽</button>
+  <button onclick="setTheme('light')">墨金 · 高端</button>
+</div>
+
+<div class="app">
+<aside class="side">
+  <div class="brand">
+    <div class="mark">LTC</div>
+    <h1>LTC RAG Bot</h1>
+    <div class="sub">KNOWLEDGE OPS</div>
+  </div>
+  <nav class="nav">
+    <div class="group">CORE</div>
+    <a class="on" data-v="chat" onclick="go('chat')"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>问答指挥台</span></a>
+    <a data-v="dash" onclick="go('dash')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg><span>运行总览</span></a>
+    <div class="group">KNOWLEDGE</div>
+    <a data-v="kb" onclick="go('kb')"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>文档资产</span></a>
+    <a data-v="chunks" onclick="go('chunks')"><svg viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="16" y2="12"/><line x1="4" y1="17" x2="18" y2="17"/></svg><span>切片管理</span></a>
+    <a data-v="prompt" onclick="go('prompt')"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span>提示词</span></a>
+    <div class="group">OPS</div>
+    <a data-v="sys" onclick="go('sys')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg><span>系统运维</span></a>
+  </nav>
+  <div class="side-foot">
+    <div><span class="sdot"></span>PROD · ONLINE</div>
+    <div>v5 · build 021</div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- 问答指挥台 -->
+<section class="view on" id="v-chat">
+  <div class="topbar">
+    <div><div class="crumb">RAG CONSOLE // LIVE</div><h2>问答指挥台</h2></div>
+    <div style="display:flex;gap:9px"><span class="pill">207 CHUNKS</span><span class="pill ok">ENGINE READY</span></div>
+  </div>
+
+  <div class="cmd">
+    <textarea rows="2" placeholder="向知识库提问 —— 207 条切片 · bge-m3 检索 · GLM-4-Flash 生成"></textarea>
+    <div class="foot">
+      <span class="opt">RERANK <span class="sw on"></span></span>
+      <span class="opt">TOP-K <b style="color:var(--acc)">5</b></span>
+      <span style="flex:1"></span>
+      <span class="mono" style="font-size:10px">ENTER ↵</span>
+      <button class="btn sm">EXECUTE</button>
+    </div>
+  </div>
+  <div class="chips">
+    <span class="chip">核心 FABE 是什么</span>
+    <span class="chip">POC 试用周期多长</span>
+    <span class="chip">交付 7 文档有哪些</span>
+    <span class="chip">RAG 和直接问大模型的区别</span>
+  </div>
+
+  <div class="grid2" style="margin-top:22px">
+    <div>
+      <div class="msg-u"><div class="b">RAG 检索增强是怎么工作的？和我们直接问大模型有什么区别？</div></div>
+      <div class="msg-a">
+        <div class="who"><span style="color:var(--acc)">◆ AGENT</span><span>1.6s</span><span class="badge b-ok">CACHE HIT · 0 TOKENS</span><span class="badge b-info">RERANK</span></div>
+        <div class="ans">RAG（Retrieval-Augmented Generation，检索增强生成）的工作方式是「先查资料，再回答」：问题向量化后在 207 条切片中三路融合检索（语义 + BM25 + RRF 重排），命中原文作为上下文交给大模型，模型只依据资料作答并标注引用。
+
+与直接问大模型的区别：直接问靠模型通用记忆，易过时且无法引用私有文档；RAG 的回答可溯源、可更新、可控——知识更新只需入库文档，无需重训模型。
+          <div class="cites"><span class="cite"><b>92%</b> FDE知识包.md #041</span><span class="cite"><b>87%</b> 零成本30天FDE案例.md #117</span><span class="cite"><b>81%</b> 项目汇总.md #008</span></div>
+        </div>
+      </div>
+      <div class="msg-u"><div class="b">没有显卡能不能跑大模型？</div></div>
+      <div class="msg-a">
+        <div class="who"><span style="color:var(--warn)">◆ GUARDRAIL</span><span>0.3s</span><span class="badge b-warn">NO LLM CALL</span></div>
+        <div class="ans rejected">当前知识库中没有「显卡 / 硬件部署」相关内容，基于资料无法回答。
+          <div class="cites"><span class="cite rej">⊘ KB NOT COVERED · 已拒答（guardrail 生效）</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>检索溯源</h3>
+        <div class="hint">LAST QUERY · FUSED SCORES</div>
+        <div class="sbar"><div class="lb"><span>#041 FDE知识包</span><b>0.92</b></div><div class="track"><div class="fill" style="width:92%"></div></div></div>
+        <div class="sbar"><div class="lb"><span>#117 FDE案例</span><b>0.87</b></div><div class="track"><div class="fill" style="width:87%"></div></div></div>
+        <div class="sbar"><div class="lb"><span>#008 项目汇总</span><b>0.81</b></div><div class="track"><div class="fill" style="width:81%"></div></div></div>
+        <div class="sbar"><div class="lb"><span>#012 部署手册</span><b>0.54</b></div><div class="track"><div class="fill" style="width:54%;opacity:.6"></div></div></div>
+      </div>
+      <div class="card">
+        <h3>会话参数</h3>
+        <div class="hint">REALTIME</div>
+        <table>
+          <tr><td style="border:none;padding:6px 2px">rerank</td><td style="border:none;text-align:right"><span class="badge b-ok">ON</span></td></tr>
+          <tr><td style="border:none;padding:6px 2px">embedding</td><td style="border:none;text-align:right" class="mono">bge-m3 · 1024</td></tr>
+          <tr><td style="border:none;padding:6px 2px">llm</td><td style="border:none;text-align:right" class="mono">glm-4-flash</td></tr>
+          <tr><td style="border:none;padding:6px 2px">拒答阈值</td><td style="border:none;text-align:right"><span class="badge b-warn">M2 启用</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 运行总览 -->
+<section class="view" id="v-dash">
+  <div class="topbar">
+    <div><div class="crumb">MISSION CONTROL // 2026-09-18</div><h2>运行总览</h2></div>
+    <button class="btn sm" onclick="go('chat')">发起问答</button>
+  </div>
+
+  <div class="grid4">
+    <div class="kpi"><div class="lb"><span>知识切片</span></div><div class="num">207</div><div class="foot">6 文档 · 124K 字符</div></div>
+    <div class="kpi"><div class="lb"><span>问答累计</span><span style="color:var(--acc)">↑ 23%</span></div><div class="num">86</div><div class="foot">平均响应 1.8s</div></div>
+    <div class="kpi"><div class="lb"><span>缓存命中率</span></div><div class="num">42<small>%</small></div><div class="foot">3 快照 · 2 stale</div></div>
+    <div class="kpi dark"><div class="lb">检索引擎</div><div class="num" style="font-size:20px">BGE-M3</div><div class="foot">1024 维 · +BM25+RRF</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>系统链路</h3>
+    <div class="hint">INGESTION → RETRIEVAL → GENERATION</div>
+    <div class="pipe">
+      <span class="node">文档入库<span class="st">● 6 FILES</span></span><span class="link"></span>
+      <span class="node">切片<span class="st">● 207</span></span><span class="link"></span>
+      <span class="node">向量化<span class="st">● bge-m3 1024-D</span></span><span class="link"></span>
+      <span class="node">融合检索<span class="st">● VECTOR+BM25+RRF</span></span><span class="link"></span>
+      <span class="node">生成<span class="st">● GLM-4F 1.8s</span></span>
+    </div>
+    <div class="sysline">
+      <span class="sysitem"><span class="sdot"></span>COS <b>/mnt/chroma</b></span>
+      <span class="sysitem"><span class="sdot"></span>AUTH <b>ON</b></span>
+      <span class="sysitem"><span class="sdot warn"></span>CACHE STALE <b>2</b></span>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>最近问答</h3>
+      <div class="hint">WITH CITATIONS</div>
+      <table>
+        <tr><th>QUESTION</th><th>REFS</th><th>TIME</th><th>SRC</th></tr>
+        <tr><td class="preview">RAG 检索增强是怎么工作的？</td><td class="mono">3</td><td class="mono">1.6s</td><td><span class="badge b-ok">CACHE</span></td></tr>
+        <tr><td class="preview">产品部署的核心 FABE 流程？</td><td class="mono">4</td><td class="mono">2.3s</td><td><span class="badge b-info">LIVE</span></td></tr>
+        <tr><td class="preview">交付文档 7 件套分别是什么？</td><td class="mono">5</td><td class="mono">1.9s</td><td><span class="badge b-info">LIVE</span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>告警与待办</h3>
+      <div class="hint">AUTO-GENERATED</div>
+      <table>
+        <tr><td style="border:none"><span class="badge b-warn">SUGGEST</span></td><td style="border:none" class="preview">2 条缓存快照已失效</td></tr>
+        <tr><td style="border:none"><span class="badge b-info">TIP</span></td><td style="border:none" class="preview">拒答阈值待 M2 启用</td></tr>
+        <tr><td style="border:none"><span class="badge b-ok">OK</span></td><td style="border:none" class="preview">向量库与文档一致</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 文档资产 -->
+<section class="view" id="v-kb">
+  <div class="topbar">
+    <div><div class="crumb">LIBRARY // CRUD ENABLED</div><h2>文档资产</h2></div>
+    <span class="pill">6 FILES · 207 CHUNKS</span>
+  </div>
+  <div class="drop">
+    <svg viewBox="0 0 24 24" style="width:26px;height:26px;stroke:var(--acc);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <div class="big">拖入文档，或点击选择文件</div>
+    <div class="sm">.MD / .TXT / .PDF · 自动切片 + 向量化</div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>全部文档</h3>
+    <div class="hint">RENAME · REPLACE（原子替换，失败回滚） · DELETE</div>
+    <table>
+      <tr><th>DOCUMENT</th><th>TYPE</th><th>CHUNKS</th><th>CHARS</th><th>INGESTED</th><th style="text-align:right">OPERATIONS</th></tr>
+      <tr><td class="preview">FDE知识包.md</td><td><span class="badge b-info">.md</span></td><td class="mono">120</td><td class="mono">58,204</td><td class="mono">09-18</td><td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad)">删除</button></td></tr>
+      <tr><td class="preview">零成本30天FDE案例.md</td><td><span class="badge b-info">.md</span></td><td class="mono">52</td><td class="mono">31,880</td><td class="mono">09-18</td><td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad)">删除</button></td></tr>
+      <tr><td class="preview">项目汇总.md</td><td><span class="badge b-info">.md</span></td><td class="mono">28</td><td class="mono">15,932</td><td class="mono">09-18</td><td style="text-align:right;white-space:nowrap"><button class="btn sm ghost">重命名</button> <button class="btn sm ghost">替换</button> <button class="btn sm ghost" style="color:var(--bad)">删除</button></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 切片管理 -->
+<section class="view" id="v-chunks">
+  <div class="topbar">
+    <div><div class="crumb">CHUNKS // 207 RECORDS</div><h2>切片管理</h2></div>
+    <button class="btn sm ghost" style="color:var(--bad)">删除选中 (1)</button>
+  </div>
+  <div class="card">
+    <table>
+      <tr><th style="width:26px"><input type="checkbox" checked style="accent-color:var(--acc)"></th><th>ID</th><th>PREVIEW</th><th>SOURCE</th><th>STRATEGY</th><th>LEN</th><th></th></tr>
+      <tr><td><input type="checkbox" checked style="accent-color:var(--acc)"></td><td class="mono">#041</td><td class="preview">RAG 检索增强生成的核心流程：解析 → 分块 → 向量化 → 混合检索…</td><td class="mono">FDE知识包.md</td><td><span class="badge b-gray">标准</span></td><td class="mono">512</td><td><button class="btn sm ghost">编辑</button></td></tr>
+      <tr><td><input type="checkbox" style="accent-color:var(--acc)"></td><td class="mono">#042</td><td class="preview">向量库选型决策树：数据量 &lt; 10 万条用本地轻量方案…</td><td class="mono">FDE知识包.md</td><td><span class="badge b-gray">标准</span></td><td class="mono">498</td><td><button class="btn sm ghost">编辑</button></td></tr>
+      <tr><td><input type="checkbox" style="accent-color:var(--acc)"></td><td class="mono">#118</td><td class="preview">回滚预案三要素：触发条件、回滚步骤、验证标准…</td><td class="mono">FDE案例.md</td><td><span class="badge b-gray">标准</span></td><td class="mono">487</td><td><button class="btn sm ghost">编辑</button></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 提示词 -->
+<section class="view" id="v-prompt">
+  <div class="topbar">
+    <div><div class="crumb">PROMPT // fabe.txt · 412 CHARS</div><h2>提示词</h2></div>
+    <div style="display:flex;gap:8px"><button class="btn sm ghost">重新加载</button><button class="btn sm">SAVE</button></div>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="editor">你是一个企业知识库问答助手。<br>
+<span class="cm">// 边界：只依据资料回答</span><br>
+只依据【检索资料】回答；资料不足时明确说"知识库中暂无相关内容"。<br>
+<span class="cm">// 拒答阈值</span><br>
+最高相关度 &lt; <span class="v">{'{{REJECT_THRESHOLD}}'}</span> 时拒答，不得自由发挥。</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px"><span class="badge b-ok">SYNTAX OK</span><span class="mono" style="font-size:10px">412 CHARS · 6 VARS</span></div>
+    </div>
+    <div class="card">
+      <h3>占位符</h3>
+      <div class="hint">INJECTED AT QUERY TIME</div>
+      <table>
+        <tr><td style="border:none;padding:5px 0"><span class="mono" style="color:var(--warn)">{question}</span></td><td style="border:none;padding:5px 0" class="preview">用户问题</td></tr>
+        <tr><td style="border:none;padding:5px 0"><span class="mono" style="color:var(--warn)">{context}</span></td><td style="border:none;padding:5px 0" class="preview">检索到的资料</td></tr>
+        <tr><td style="border:none;padding:5px 0"><span class="mono" style="color:var(--warn)">{'{{REJECT_THRESHOLD}}'}</span></td><td style="border:none;padding:5px 0" class="preview">拒答阈值 0-1</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 系统运维 -->
+<section class="view" id="v-sys">
+  <div class="topbar">
+    <div><div class="crumb">OPS // SYSTEM & CACHE</div><h2>系统运维</h2></div>
+    <span class="pill">BUILD 021</span>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <h3>省算策略 · Token 经济</h3>
+    <div class="hint">4-LAYER FUNNEL · LLM 是最后一层</div>
+    <div class="grid4" style="gap:12px">
+      <div class="kpi" style="padding:14px 16px"><div class="lb">L0 精确缓存</div><div class="num c-ok" style="font-size:21px">0 <small>tok</small></div><div class="foot">同问法直返 · 42%</div></div>
+      <div class="kpi" style="padding:14px 16px"><div class="lb">L1 语义近似</div><div class="num c-ok" style="font-size:21px">≈0 <small>tok</small></div><div class="foot">相似问 ≥0.92 · 12%</div></div>
+      <div class="kpi" style="padding:14px 16px"><div class="lb">L2 拒答短路</div><div class="num c-warn" style="font-size:21px">0 <small>tok</small></div><div class="foot">低分不调 LLM · 30%</div></div>
+      <div class="kpi dark" style="padding:14px 16px"><div class="lb">L3 完整 RAG</div><div class="num" style="font-size:21px">1.6K <small>tok</small></div><div class="foot">仅 18% 走到这层</div></div>
+    </div>
+  </div>
+  <div class="grid2even">
+    <div class="card">
+      <h3>Embedding 引擎</h3>
+      <div class="hint">SWITCH → AUTO REBUILD → PERSISTED</div>
+      <table>
+        <tr><td class="preview" style="border:none;padding:8px 0">当前</td><td style="border:none;text-align:right"><span class="badge b-ok">siliconflow</span></td></tr>
+        <tr><td class="preview" style="border:none;padding:8px 0">模型</td><td style="border:none;text-align:right" class="mono">BAAI/bge-m3 · 1024-D</td></tr>
+        <tr><td class="preview" style="border:none;padding:8px 0">重建</td><td style="border:none;text-align:right"><button class="btn sm ghost">REBUILD</button></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>答案缓存</h3>
+      <div class="hint">AUTO-INVALIDATED BY KB FINGERPRINT</div>
+      <div class="grid4" style="grid-template-columns:repeat(3,1fr);gap:10px;margin:4px 0 8px">
+        <div class="kpi" style="padding:11px 13px"><div class="lb">SNAPSHOTS</div><div class="num" style="font-size:21px">3</div></div>
+        <div class="kpi" style="padding:11px 13px"><div class="lb">HOT</div><div class="num c-ok" style="font-size:21px">1</div></div>
+        <div class="kpi" style="padding:11px 13px"><div class="lb">STALE</div><div class="num c-warn" style="font-size:21px">2</div></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn sm ghost" style="color:var(--bad)">清空全部</button></div>
+    </div>
+  </div>
+</section>
+
+<div class="note">
+  <b>v3 双主题效果图</b> · 右下角按钮切换：<b>深空·清爽</b>（去掉全屏网格，只留纯净底色与极淡光晕，间距更大、层级更轻）<b>/ 墨金·高端</b>（暖白底 + 深墨侧栏与深色数据条点缀 + 金铜 + 衬线标题）。数据为演示假数据。
+</div>
+</main>
+</div>
+
+<script>
+function go(v){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.nav a').forEach(e=>e.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelector('.nav a[data-v="'+v+'"]').classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function setTheme(t){
+  document.body.dataset.theme = t;
+  document.querySelectorAll('.theme-sw button').forEach((b,i)=>{
+    b.classList.toggle('on', (i===0 && t==='dark') || (i===1 && t==='light'));
+  });
+}
+</script>
+</body>
+</html>

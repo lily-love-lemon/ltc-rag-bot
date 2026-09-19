@@ -1,0 +1,6 @@
+{
+  "envId": "lily0625ai-d1gpwc1vw89141edd",
+  "cloudrun": {
+    "name": "ltc-rag-bot"
+  }
+}

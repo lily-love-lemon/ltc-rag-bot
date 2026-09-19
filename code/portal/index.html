@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="PB0fjYhzsbOHnoxC62qM5w">
+<head data-page-node-id="Ew93CVZZKApeATbrBChVDs">
+<meta charset="UTF-8" data-page-node-id="rLyrPeKXbn6BxK7soyDgpJ">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="eVtADWBaldAJFR7cDQ1oUa">
+<title>LTC RAG Bot · 知识运营指挥台 V5</title>
+<style>
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-500.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.0.13/400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.0.13/500.css');
+
+:root{
+  --bg:#0B0E13; --panel:#10141B; --panel2:#151B25; --raise:#1A2130;
+  --line:#222B3A; --line2:#2C3850;
+  --ink:#E8EDF6; --ink2:#93A0B4; --ink3:#5C6880;
+  --acc:#4C8DFF; --acc-soft:rgba(76,141,255,.12);
+  --ok:#2BD590; --ok-soft:rgba(43,213,144,.12);
+  --warn:#F5A623; --warn-soft:rgba(245,166,35,.12);
+  --bad:#FF5C5C; --bad-soft:rgba(255,92,92,.12);
+  --body-bg:none;
+  --sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'IBM Plex Mono','SF Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13.5px;line-height:1.6;-webkit-font-smoothing:antialiased;background-image:var(--body-bg)}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(1100px 480px at 28% -8%,rgba(76,141,255,.06),transparent 60%);pointer-events:none;z-index:0}
+a{color:var(--acc);text-decoration:none}
+
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh;position:relative;z-index:1}
+.side{background:rgba(16,20,27,.94);border-right:1px solid var(--line);padding:26px 0 16px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;backdrop-filter:blur(6px)}
+.main{padding:0 40px 60px;max-width:1280px;min-width:0}
+
+.brand{padding:0 22px 20px;border-bottom:1px solid var(--line)}
+.mark{width:38px;height:38px;border:1px solid var(--acc);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:500;font-size:13px;color:var(--acc);margin-bottom:13px;clip-path:polygon(0 0,100% 0,100% 70%,70% 100%,0 100%)}
+.brand h1{font-size:15.5px;font-weight:500;letter-spacing:1px}
+.brand .sub{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:3px;margin-top:3px}
+.nav{padding:12px 10px;flex:1}
+.nav .group{font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:3px;padding:0 12px;margin:14px 0 6px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;color:var(--ink2);font-size:13px;cursor:pointer;border-left:2px solid transparent;transition:all .15s;clip-path:polygon(0 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%)}
+.nav a svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav a:hover{background:var(--panel2);color:var(--ink)}
+.nav a.on{background:var(--acc-soft);color:var(--acc);border-left-color:var(--acc)}
+.side-foot{padding:12px 22px 0;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--ink3);line-height:2}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);margin-right:6px}
+.dot.warn{background:var(--warn)}
+
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:24px 0 14px;border-bottom:1px solid var(--line);margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.crumb{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:3px;margin-bottom:5px}
+.topbar h2{font-size:20px;font-weight:500;letter-spacing:1px}
+.pill{font-family:var(--mono);font-size:10px;padding:3px 10px;border:1px solid var(--line2);color:var(--ink2);border-radius:3px;letter-spacing:1px;display:inline-block}
+.pill.ok{color:var(--ok);border-color:rgba(43,213,144,.4)}
+.pill.warn{color:var(--warn);border-color:rgba(245,166,35,.4)}
+
+.btn{background:var(--acc);color:#fff;border:1px solid var(--acc);border-radius:3px;padding:8px 18px;font-size:12.5px;font-family:var(--mono);letter-spacing:1px;cursor:pointer;transition:all .15s;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%)}
+.btn:hover{background:#3A7AE8}
+.btn.ghost{background:transparent;color:var(--ink2);border-color:var(--line2)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--ink3)}
+.btn.sm{padding:4px 11px;font-size:10.5px}
+.btn.danger{color:var(--bad);border-color:rgba(255,92,92,.4)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:18px 20px;position:relative}
+.card::before,.card::after{content:'';position:absolute;width:10px;height:10px;border-color:var(--line2);border-style:solid;pointer-events:none}
+.card::before{top:-1px;left:-1px;border-width:1.5px 0 0 1.5px}
+.card::after{bottom:-1px;right:-1px;border-width:0 1.5px 1.5px 0}
+.card h3{font-size:13.5px;font-weight:500;letter-spacing:.5px;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.card h3::before{content:'';width:3px;height:12px;background:var(--acc)}
+.card .hint{font-size:11px;color:var(--ink3);margin:2px 0 14px;font-family:var(--mono)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1.65fr 1fr;gap:12px}
+.grid2even{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi .lb{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;display:flex;justify-content:space-between}
+.kpi .num{font-family:var(--mono);font-size:27px;font-weight:500;margin-top:6px;letter-spacing:-.5px}
+.kpi .num small{font-size:12px;color:var(--ink3);font-weight:400}
+.kpi .foot{font-size:11px;color:var(--ink2);margin-top:1px}
+.kpi.dark{background:var(--raise);border-color:var(--line2)}
+.kpi.dark .num{color:var(--ink)}
+.kpi svg.spark{position:absolute;right:10px;bottom:10px;opacity:.9}
+.c-acc{color:var(--acc)}.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:var(--bad)}
+
+.sysline{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sysitem{font-family:var(--mono);font-size:10.5px;color:var(--ink2);border:1px solid var(--line);background:var(--panel2);border-radius:3px;padding:5px 11px;display:flex;align-items:center;gap:7px}
+.sysitem b{font-weight:500;color:var(--ink)}
+.sdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.sdot.warn{background:var(--warn)}
+.sdot.bad{background:var(--bad)}
+
+.pipe{display:flex;align-items:center;margin:14px 4px 4px;flex-wrap:wrap;gap:0}
+.node{border:1px solid var(--line2);background:var(--panel2);border-radius:3px;padding:7px 12px;font-family:var(--mono);font-size:10px;color:var(--ink);white-space:nowrap}
+.node .st{display:block;font-size:8.5px;color:var(--ok);letter-spacing:1px;margin-top:2px}
+.link{flex:1;height:1px;background:var(--line2);position:relative;min-width:12px}
+.link::after{content:'▸';position:absolute;right:-2px;top:-6px;color:var(--ink3);font-size:8px}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-family:var(--mono);font-size:9.5px;color:var(--ink3);letter-spacing:2px;font-weight:400;padding:8px 10px;border-bottom:1px solid var(--line2)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:var(--panel2)}
+.mono{font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.preview{color:var(--ink2);font-size:12px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{font-family:var(--mono);font-size:9.5px;padding:2px 8px;border-radius:3px;letter-spacing:1px;display:inline-block}
+.b-ok{background:var(--ok-soft);color:var(--ok);border:1px solid rgba(43,213,144,.3)}
+.b-warn{background:var(--warn-soft);color:var(--warn);border:1px solid rgba(245,166,35,.3)}
+.b-bad{background:var(--bad-soft);color:var(--bad);border:1px solid rgba(255,92,92,.3)}
+.b-info{background:var(--acc-soft);color:var(--acc);border:1px solid rgba(76,141,255,.3)}
+.b-gray{background:var(--panel2);color:var(--ink3);border:1px solid var(--line2)}
+
+.cmd{background:var(--panel);border:1px solid var(--line2);border-radius:6px;padding:16px 18px;position:relative}
+.cmd::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--acc),transparent 70%)}
+.cmd:focus-within{border-color:var(--acc)}
+.cmd textarea{width:100%;border:none;outline:none;resize:none;font-family:var(--sans);font-size:14.5px;background:transparent;color:var(--ink);line-height:1.7}
+.cmd textarea::placeholder{color:var(--ink3)}
+.cmd .foot{display:flex;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);flex-wrap:wrap}
+.opt{font-family:var(--mono);font-size:10.5px;color:var(--ink2);display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none}
+.sw{position:relative;width:30px;height:16px;background:var(--raise);border:1px solid var(--line2);border-radius:99px;display:inline-block;vertical-align:middle}
+.sw::after{content:'';position:absolute;left:2px;top:2px;width:10px;height:10px;border-radius:50%;background:var(--ink3);transition:all .15s}
+.sw.on{background:rgba(43,213,144,.2);border-color:var(--ok)}
+.sw.on::after{left:15px;background:var(--ok)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+.chip{font-family:var(--mono);font-size:11px;color:var(--ink2);border:1px solid var(--line2);background:var(--panel);border-radius:3px;padding:5px 13px;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--acc);color:var(--acc)}
+
+.msg-u{display:flex;justify-content:flex-end;margin:16px 0 8px}
+.msg-u .b{background:var(--raise);border:1px solid var(--line2);border-radius:4px 4px 0 4px;padding:9px 15px;font-size:13px;max-width:72%}
+.msg-a{margin:8px 0}
+.msg-a .who{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1.5px;margin-bottom:6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ans{background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--acc);border-radius:0 4px 4px 0;padding:14px 17px;font-size:13px;line-height:1.85;white-space:pre-wrap;word-break:break-word}
+.ans.rejected{border-left-color:var(--warn)}
+.cites{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
+.cite{font-family:var(--mono);font-size:10px;color:var(--ink2);border:1px solid var(--line2);border-radius:3px;padding:3px 9px;cursor:default;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cite b{color:var(--acc);font-weight:500}
+.cite.rej{color:var(--warn);border-color:var(--warn)}
+
+.sbar{margin:9px 0}
+.sbar .lb{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--ink2);margin-bottom:3px}
+.track{height:5px;background:var(--raise);border-radius:2px;overflow:hidden}
+.fill{height:100%;background:var(--acc);transition:width .4s ease}
+
+.drop{border:1.5px dashed var(--line2);background:var(--panel);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop:hover{border-color:var(--acc);background:var(--panel2)}
+.drop.drag{border-color:var(--acc);background:var(--acc-soft)}
+.drop .big{font-size:14px;font-weight:500;margin:8px 0 3px}
+.drop .sm{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+
+input[type=text],select,textarea{background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:8px 12px;color:var(--ink);font-family:var(--sans);font-size:12.5px;outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+textarea{resize:vertical}
+label{display:block;font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:2px;margin:10px 0 4px}
+
+.editor{background:#0A0D12;border:1px solid var(--line);border-radius:4px;padding:16px 18px;font-family:var(--mono);font-size:12px;line-height:1.9;color:#C9D4E5}
+
+.chunk-item{background:var(--panel2);border:1px solid var(--line);border-left:2px solid var(--line2);border-radius:3px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;transition:border-color .15s}
+.chunk-item:hover{border-left-color:var(--acc)}
+.chunk-item .meta{display:flex;gap:8px;font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-bottom:5px;flex-wrap:wrap;align-items:center}
+.chunk-item .meta .src{color:var(--acc)}
+.chunk-item .txt{color:var(--ink2);font-size:12.5px;line-height:1.7;word-break:break-word}
+.chunk-item input[type=checkbox]{accent-color:var(--acc);margin-top:3px}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(5,8,12,.75);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(2px)}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:6px;padding:22px 24px;width:92%;max-width:620px;max-height:85vh;overflow-y:auto}
+.modal h4{font-size:14px;font-weight:500;margin-bottom:14px;letter-spacing:1px}
+.modal .row-end{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+
+.toast{position:fixed;top:18px;right:18px;background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--ok);border-radius:4px;padding:11px 18px;color:var(--ink);font-size:12.5px;z-index:300;animation:slide .25s ease;max-width:380px}
+.toast.error{border-left-color:var(--bad)}
+@keyframes slide{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+
+.pagination{display:flex;gap:6px;justify-content:center;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--ink3);align-items:center}
+.pagination button{background:var(--panel2);border:1px solid var(--line2);color:var(--ink2);padding:3px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:var(--mono)}
+.pagination button:hover:not(:disabled){color:var(--ink);border-color:var(--ink3)}
+.pagination button.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.pagination button:disabled{opacity:.35;cursor:not-allowed}
+.pagination .cur{color:var(--ink)}
+
+.empty{text-align:center;padding:40px 20px;color:var(--ink3);font-size:12px}
+.empty .ic{font-family:var(--mono);font-size:11px;letter-spacing:3px;margin-bottom:8px;color:var(--ink3)}
+
+.view{display:none}.view.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.note{margin-top:32px;border-top:1px solid var(--line);padding-top:14px;font-size:11px;color:var(--ink3);line-height:2;font-family:var(--mono)}
+
+@media (max-width:1080px){
+  .app{grid-template-columns:60px 1fr}
+  .side .brand h1,.side .brand .sub,.nav a span,.nav .group,.side-foot{display:none}
+  .main{padding:0 16px 40px}
+  .grid4,.grid2,.grid2even{grid-template-columns:1fr}
+}
+
+/* ══════════ 主题 B：墨金·高端（暖白 + 深墨侧栏 + 金铜 + 衬线标题）══════════ */
+[data-theme="light"]{
+  --bg:#F6F4F0; --panel:#FFFFFF; --panel2:#FAF8F5; --raise:#1A1613;
+  --line:#E6E1D8; --line2:#D4CDBC;
+  --ink:#1A1613; --ink2:#6B645C; --ink3:#9C9489;
+  --acc:#A87C4F; --acc-soft:rgba(168,124,79,.10);
+  --ok:#2E7D5B; --ok-soft:rgba(46,125,91,.10);
+  --warn:#B7791F; --warn-soft:rgba(183,121,31,.12);
+  --bad:#B3402E; --bad-soft:rgba(179,64,46,.10);
+}
+[data-theme="light"] body::before{background:none}
+[data-theme="light"] .side{background:#1A1613}
+[data-theme="light"] .brand h1{color:#F5F1EA}
+[data-theme="light"] .mark{color:#C9A227;border-color:#C9A227}
+[data-theme="light"] .nav a{color:#A79E92}
+[data-theme="light"] .nav a:hover{color:#F5F1EA;background:rgba(255,255,255,.05)}
+[data-theme="light"] .nav a.on{color:#C9A227;background:rgba(201,162,39,.14);border-left-color:#C9A227}
+[data-theme="light"] .nav .group{color:#7A7267}
+[data-theme="light"] .side-foot{color:#8A8175}
+[data-theme="light"] .card h3,[data-theme="light"] .topbar h2{font-family:'Noto Serif SC',Georgia,serif;font-weight:600}
+[data-theme="light"] .kpi .num{font-family:'Noto Serif SC',Georgia,serif;font-weight:600}
+[data-theme="light"] .kpi.dark{background:#1A1613;border-color:#2B251E}
+[data-theme="light"] .kpi.dark .lb{color:#A79E92}
+[data-theme="light"] .kpi.dark .num{color:#F5F1EA}
+[data-theme="light"] .kpi.dark .foot{color:#A79E92}
+[data-theme="light"] .btn{background:#C9A227;border-color:#C9A227;color:#17130E}
+[data-theme="light"] .btn:hover{background:#B8901F}
+[data-theme="light"] .msg-u .b{background:#1A1613;color:#F5F1EA;border-color:#2B251E}
+[data-theme="light"] .editor,[data-theme="light"] .cmd{background:#12100D;border-color:#2B251E}
+[data-theme="light"] .editor textarea,[data-theme="light"] .cmd textarea{color:#D8D2C8}
+[data-theme="light"] .cmd::before{background:linear-gradient(90deg,#C9A227,transparent 65%)}
+[data-theme="light"] .cmd .foot{border-top-color:#2B251E}
+
+/* 主题切换器 */
+.theme-sw{position:fixed;right:20px;bottom:20px;z-index:500;display:flex;gap:5px;background:var(--panel);border:1px solid var(--line2);border-radius:99px;padding:4px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.theme-sw button{background:transparent;border:none;color:var(--ink2);font-size:11.5px;font-family:var(--sans);padding:6px 14px;border-radius:99px;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.theme-sw button.on{background:var(--acc);color:#fff}
+</style>
+</head>
+<body data-theme="dark" data-page-node-id="3o8T4Gk9h76HAsBnxDdZI9">
+<div class="app" data-page-node-id="fDzYsIxJnnSlBqrDAV1V1y">
+
+<aside class="side" data-page-node-id="VETHu3tUhE6hSfNB76pEzE">
+  <div class="brand" data-page-node-id="5IYI9dpDIx52hd9reg22gs">
+    <div class="mark" data-page-node-id="QIMBGHPDwyxMbtykRQYzpv">LTC</div>
+    <h1 data-page-node-id="3JD95ndmlggMNUjfYbY8A5">LTC RAG Bot</h1>
+    <div class="sub" data-page-node-id="axI6ECwZFf0WWy7OIwHZx4">KNOWLEDGE OPS</div>
+  </div>
+  <nav class="nav" data-page-node-id="xbLaB4cXHcxGEhjjGBwjxX">
+    <div class="group" data-page-node-id="DDIP3dvphk8qxGGjf5QRca">CORE</div>
+    <a class="on" data-v="chat" data-page-node-id="yQDr7zjkVNXt3tAb99zJpA"><svg viewBox="0 0 24 24" data-page-node-id="MNxIPpHwhnkTBrs8lDiyfV"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" data-page-node-id="1NHFeW7UrdxKQyLZbgcOGR"/></svg><span data-page-node-id="ELmLYY5pIccohR1qypOVb9">问答指挥台</span></a>
+    <a data-v="dash" data-page-node-id="G411FdCxF0XxGYLdwNdRLt"><svg viewBox="0 0 24 24" data-page-node-id="UwQKTsVSphc4FIZDYIiGRn"><rect x="3" y="3" width="7" height="9" rx="1" data-page-node-id="fJxjdlb1RXYtZfy7AAbIDr"/><rect x="14" y="3" width="7" height="5" rx="1" data-page-node-id="XNGI6KuEEDm6aumSRj7Phx"/><rect x="14" y="12" width="7" height="9" rx="1" data-page-node-id="XvlbTtiUllsvHOdWX8i1op"/><rect x="3" y="16" width="7" height="5" rx="1" data-page-node-id="r4WII4KxJHEYr5mJiqICZS"/></svg><span data-page-node-id="fTiqg7FwsLzwnVUR4jjjQT">运行总览</span></a>
+    <div class="group" data-page-node-id="W4CiF9yHh5n5CxukPLEygc">KNOWLEDGE</div>
+    <a data-v="kb" data-page-node-id="rWnX2y1QQ4s2jEofm38XKq"><svg viewBox="0 0 24 24" data-page-node-id="GuTHVoY2DJnc96rEQ4b2QG"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" data-page-node-id="nG3fOhFR4OkgEhotpA3lgr"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" data-page-node-id="h27gl2lqKi5bVcPhGpHbeR"/></svg><span data-page-node-id="RaHljvouI3hNJjxcBNKmCp">文档资产</span></a>
+    <a data-v="ingest" data-page-node-id="wgTYIw8bvu4b1bHLuQr7Wm"><svg viewBox="0 0 24 24" data-page-node-id="MoVGJOXk2PHXg9wM9OMmwJ"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" data-page-node-id="xpX5pNSWs4X9JKFm3Lwtjy"/><polyline points="17 8 12 3 7 8" data-page-node-id="m6QZVHKxPCtMEsjq60a3nK"/><line x1="12" y1="3" x2="12" y2="15" data-page-node-id="WWh82kv1XqBzGbQjae252N"/></svg><span data-page-node-id="gsofIxBcLArAIXY2tCuwhn">入库</span></a>
+    <a data-v="chunks" data-page-node-id="u1ncGFdnof7qjCepFc7hvZ"><svg viewBox="0 0 24 24" data-page-node-id="UWGNlcqDMBgXix0kCpyYxB"><line x1="4" y1="7" x2="20" y2="7" data-page-node-id="AyIHMyTG1Nshd7U8WgGYb6"/><line x1="4" y1="12" x2="16" y2="12" data-page-node-id="XJCh4E1PowHqzCC6Z8lPj4"/><line x1="4" y1="17" x2="18" y2="17" data-page-node-id="NDjAVPhCRtDAxCPoRlHXhC"/></svg><span data-page-node-id="dVJuxCJNNJWCER5wlV45IY">切片管理</span></a>
+    <a data-v="prompt" data-page-node-id="GBKY79nudwHavjrfmZN71d"><svg viewBox="0 0 24 24" data-page-node-id="alUzbKRcxFsgRHkN2lT6h9"><path d="M12 20h9" data-page-node-id="71CqPNHwygqDaAumfWRbUh"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" data-page-node-id="yZPtGcpCO7owAD1tzV5VH1"/></svg><span data-page-node-id="VnTAQdRdf5H76zQ4gZVUnt">提示词</span></a>
+    <div class="group" data-page-node-id="ziHAbBtZhJzmlkzvq7gCfd">OPS</div>
+    <a data-v="sys" data-page-node-id="2iXnK4pQXcpwK1jWLvgRVo"><svg viewBox="0 0 24 24" data-page-node-id="tmvRacwJV5dLXDuYWjB92i"><circle cx="12" cy="12" r="3" data-page-node-id="HrFqLYFvC4FLJIBO0GTiHV"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8" data-page-node-id="mCElCoHlLoGBLj784QPT1U"/></svg><span data-page-node-id="7YmSf4G5mtos3aNQ3AbBrt">系统运维</span></a>
+  </nav>
+  <div class="side-foot" data-page-node-id="gAWykzZ8BicDq0spVIxpY5">
+    <div id="foot-status" data-page-node-id="HEHAUuQscXuA48rM9ggXa3"><span class="dot" data-page-node-id="wTUOXBgklNO1NCt01XsWIw"></span>CONNECTING…</div>
+    <div id="foot-version" data-page-node-id="DawXKcubhJEl43UGeDCkR2">v5 · —</div>
+  </div>
+</aside>
+
+<main class="main" data-page-node-id="ZwWnlUL8TUDfznn1cRBbGF">
+
+<!-- ══════ 问答指挥台（默认） ══════ -->
+<section class="view on" id="v-chat" data-page-node-id="Gw0KxjZuzYbYPIDaEbaIuh">
+  <div class="topbar" data-page-node-id="Ds455INc2YzZtpOQIT7IEz">
+    <div data-page-node-id="m5cWzFhsko8umr4PRChVyB"><div class="crumb" data-page-node-id="2u08PkceyxzkJSCGoTHjmI">RAG CONSOLE // LIVE</div><h2 data-page-node-id="1gFvC62F9UHV667IWTyhCh">问答指挥台</h2></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" data-page-node-id="WVQOrSF7eHfGmHJ7TA0RKL">
+      <span class="pill" id="chat-chunks" data-page-node-id="2aQ9EOiVYae7nEOWCa1kGY">— CHUNKS</span>
+      <span class="pill" id="chat-engine" data-page-node-id="WdmIlZ5dq72v2jtGUaPIuT">—</span>
+    </div>
+  </div>
+
+  <div class="cmd" data-page-node-id="LrqGDrLS0soNAgoQGBX8yh">
+    <textarea id="query-input" rows="2" placeholder="向知识库提问 —— 例如：核心 FABE 是什么？"></textarea>
+    <div class="foot" data-page-node-id="5wNsMANVzerM5frmE3Ln1G">
+      <span class="opt" data-page-node-id="MhPLVjC0mdvpd47f3rgRh6">RERANK <span class="sw on" id="sw-rerank" data-page-node-id="z3ykAfDS0PetlNYr8Zbhgk"></span></span>
+      <span class="opt" data-page-node-id="47CGsxFua0JQ4Zmqk2kOTq">TOP-K <b style="color:var(--acc)" id="topk-label" data-page-node-id="UwLlQBeD2Nrl8tuv1SILvE">5</b></span>
+      <span style="flex:1" data-page-node-id="awjbFGKBHAPGMYTrXpDusd"></span>
+      <span class="mono" style="font-size:10px;color:var(--ink3)" data-page-node-id="rARJJzkU8XNLTJJCIesaqZ">ENTER ↵</span>
+      <button class="btn sm" id="query-btn" onclick="doQuery()" data-page-node-id="PIWMkAquP95lM13keZIfcJ">EXECUTE</button>
+    </div>
+  </div>
+  <div class="chips" data-page-node-id="ypcbmFgoZR8tPxtChlAO68">
+    <span class="chip" data-page-node-id="KYirsTTTZ5U7554zpxE0AP">▸ 核心 FABE 是什么</span>
+    <span class="chip" data-page-node-id="OMCsK3407XtiOoiMOAc2Or">▸ POC 试用周期多长</span>
+    <span class="chip" data-page-node-id="8SJ7i0n1wISEFZH3Ywz2ZI">▸ 交付 7 文档有哪些</span>
+    <span class="chip" data-page-node-id="sfM39ZCAnXyxKVfKwBzIeq">▸ 私有化部署怎么选型</span>
+    <span class="chip" data-page-node-id="Cn9XLDVYl5aFw3fuwbNR0S">▸ RAG 和直接问大模型的区别</span>
+  </div>
+
+  <div class="grid2" style="margin-top:16px;grid-template-columns:1.7fr 1fr" data-page-node-id="Ac9FihRQM0tMZzn020zC2v">
+    <div id="chat-flow" data-page-node-id="10dOOKMkLjQB7by0BfvarS"><div class="empty" data-page-node-id="cDxDF347tpsJuJjFdP6wVg"><div class="ic" data-page-node-id="DNQWzXFdRPfkuO9a1ThUAH">NO QUERIES YET</div>提问后，对话与引用溯源会出现在这里</div></div>
+    <div data-page-node-id="ohdOBFwCJF1y5iOMTZbWSr">
+      <div class="card" style="margin-bottom:12px" data-page-node-id="jh1jo83Uww0hIAZssJxiLm">
+        <h3 data-page-node-id="0c4H5baygnkLABptu4GBp9">检索溯源</h3>
+        <div class="hint" data-page-node-id="scJSnDGkeLpiNrcqiTGAMG">LAST QUERY · FUSED SCORES</div>
+        <div id="debug-scores" data-page-node-id="kpoZZ3ZWCtKwSh9N83SdhV"><div class="empty" style="padding:18px" data-page-node-id="5DiUe20EDey0iODghugobO">暂无数据 · 提问后显示各来源得分</div></div>
+      </div>
+      <div class="card" data-page-node-id="3dSW7gcAwZiqkj7idEf84H">
+        <h3 data-page-node-id="rGq60CKxbQK0DzczmltPEs">会话参数</h3>
+        <div class="hint" data-page-node-id="PoHE48iJmVATERFbGkKIRi">REALTIME · SENT WITH REQUEST</div>
+        <div id="session-params" data-page-node-id="hyjBaZISkFVyaE4mcDKq7d">
+          <table data-page-node-id="QY9eNvWeLTvOizhCJ0pUqQ">
+            <tr data-page-node-id="2d37fE9485jMrpcKLAlsdw"><td style="border:none;padding:5px 2px" data-page-node-id="BsFhVeqEhVtSqzQRhb5jvX">rerank</td><td style="border:none;padding:5px 2px;text-align:right" data-page-node-id="iAwMvkQnNM20DbVyB7URbB"><span class="badge b-ok" data-page-node-id="YLS5B6vHMt1k4Bwsli7lai">ON</span></td></tr>
+            <tr data-page-node-id="znjGt7RxhSNNCuHFsNQEO9"><td style="border:none;padding:5px 2px" data-page-node-id="GNLGYnthnjJcYHXdAZ1cbM">embedding</td><td style="border:none;padding:5px 2px;text-align:right" class="mono" id="p-embed" data-page-node-id="JhiBbHYvfxJtK2ESxZ5GQn">—</td></tr>
+            <tr data-page-node-id="2yVmEEOkGbNRMyAIk30hd7"><td style="border:none;padding:5px 2px" data-page-node-id="kY6ZAnR11iHI3OgmC2sZse">llm</td><td style="border:none;padding:5px 2px;text-align:right" class="mono" id="p-llm" data-page-node-id="DQQOcEBM9ukMdwQyFd0KhA">—</td></tr>
+            <tr data-page-node-id="LrOcrVoABRdEJMy3EeCfy4"><td style="border:none;padding:5px 2px" data-page-node-id="bwm6EmgRXNXRQ5o1Em9yHM">拒答阈值</td><td style="border:none;padding:5px 2px;text-align:right" data-page-node-id="ojVOnfUKEyLCEAt8ZHMCcV"><span class="badge b-warn" data-page-node-id="abcde5NzhgBxigbIDFpc84">未启用</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 运行总览 ══════ -->
+<section class="view" id="v-dash" data-page-node-id="QdwHLPwuvYBJXpPyO9VgdY">
+  <div class="topbar" data-page-node-id="IQBVUsM08twvvzIsH4OE59">
+    <div data-page-node-id="5gIAndYwkgW4SCpxyofo54"><div class="crumb" data-page-node-id="96TrNuAhSXHjXQhxXg8XmJ">MISSION CONTROL // <span id="dash-date" data-page-node-id="WkoW9f33zmPclFIDD50vbK">—</span></div><h2 data-page-node-id="wDFSNYNwkzzzJZ1R7aStl1">运行总览</h2></div>
+    <button class="btn sm" onclick="go('chat')" data-page-node-id="aDSmhVWu6XRhoBDuLyLaeD">发起问答</button>
+  </div>
+
+  <div class="grid4" data-page-node-id="tyhSsbuCmxCQQSeFwk3lLi">
+    <div class="kpi" data-page-node-id="Fv4k9J1BBPDs0FHuy3xoN6"><div class="lb" data-page-node-id="n3naRXl5fDmE6vAcBjFe89"><span data-page-node-id="JsSKUwYxk7GkHLfxe0R3PH">知识切片</span><span class="c-ok" id="k-chunk-trend" data-page-node-id="bZ8serxt8iIPDQWLrBL9K8">READY</span></div><div class="num" id="k-chunks" data-page-node-id="PE3njpx29MPkNo6hE6xcgy">—</div><div class="foot" id="k-files" data-page-node-id="KHBNUXcAyXubUgRUtD4XUe">— 文档</div></div>
+    <div class="kpi" data-page-node-id="muUbOvAgHNExg7USInN3wH"><div class="lb" data-page-node-id="DN3i1iACYsF2v8PZtoz4fQ"><span data-page-node-id="urdTBnmfXUoc3cMvw4pGZL">问答累计（本机）</span><span class="c-acc" id="k-q-trend" data-page-node-id="8MQTggDHXIOvCyKISLUZj0">—</span></div><div class="num" id="k-queries" data-page-node-id="zLziEGqsbfhpPPRP9ZBeWD">0</div><div class="foot" id="k-q-avg" data-page-node-id="i3B9yMOho0KBgnDNx3bKeY">平均响应 —</div></div>
+    <div class="kpi" data-page-node-id="l2XAGtN4NyC9yMthPKBQBC"><div class="lb" data-page-node-id="NN7Mix5pYWw5NHhXr2SGE8"><span data-page-node-id="uPa4IIASNcnoT3z8o2dQHc">缓存命中率（本机）</span><span class="c-ok" data-page-node-id="5nnjgol3MbMj6H94tjcQdV">HEALTHY</span></div><div class="num" id="k-hitrate" data-page-node-id="BgnQ3H8hXGC0vDaZTBX0n5">—<small data-page-node-id="dGjvIma1G2RS28eBg4xBiI">%</small></div><div class="foot" id="k-cache-sub" data-page-node-id="9WGqzvSBeUnaiCyml6iz9p">— 快照</div></div>
+    <div class="kpi dark" data-page-node-id="q35EUY2cX9n3PCgbTtgnNG"><div class="lb" data-page-node-id="6Q4Ew4jq3be2CTxxfZwS6H"><span data-page-node-id="fYvRcqrIcHTp6LGfr8AG8O">检索引擎</span><span class="c-acc" id="k-dim" data-page-node-id="jj8eTcEQSz73WgPxTxmsTB">—</span></div><div class="num" style="font-size:19px;padding-top:5px" id="k-engine" data-page-node-id="SoqLbWlGm6U9rvhrMfgykX">—</div><div class="foot" id="k-engine-sub" data-page-node-id="Nrh4lb7DN0kpOZ5eeBjtPt">—</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px" data-page-node-id="tVUtk2Ku1ZgcNq83J0jk1V">
+    <h3 data-page-node-id="lXyZKGB3q6YgY1SJMB6sXO">系统链路</h3>
+    <div class="hint" data-page-node-id="aoE9Q8xueWmAKtUy4Dgu23">INGESTION → RETRIEVAL → GENERATION</div>
+    <div class="pipe" data-page-node-id="GoMBOoWnOwYV9NCFz70FHv">
+      <span class="node" data-page-node-id="O4umAcpd4hXUgizCscwUfx">文档入库<span class="st" id="pn-files" data-page-node-id="iGFeAJHMOPql2htiqlrahW">● —</span></span><span class="link" data-page-node-id="0q3NpDMlODG3Bj3zR3yeRv"></span>
+      <span class="node" data-page-node-id="fcPFuWT2ACC0opQnIql6sZ">切片<span class="st" id="pn-chunks" data-page-node-id="vzZTkbHaqLHd2v4lKg1AfX">● —</span></span><span class="link" data-page-node-id="2BOxq8NIGUAU027pInTKEF"></span>
+      <span class="node" data-page-node-id="EQrbzlj9DuxcrXxP87vISR">向量化<span class="st" id="pn-embed" data-page-node-id="QdTKwyPHiyS1liaIezjJx1">● —</span></span><span class="link" data-page-node-id="I2S7Epdo7fSU267mYHRqaI"></span>
+      <span class="node" data-page-node-id="PNFmeFMokjtC4Np9DHg8ue">融合检索<span class="st" id="pn-bm25" data-page-node-id="CKWIs5Eg1eqBT0YrV3i7T5">● —</span></span><span class="link" data-page-node-id="sF22rcIoTeGY7lRZdVDcle"></span>
+      <span class="node" data-page-node-id="kRih0DH1hI1OeTTzS1JA6Q">生成<span class="st" id="pn-llm" data-page-node-id="c2b00Sr8kvAISX2MeqyPwf">● —</span></span>
+    </div>
+    <div class="sysline" id="sysline" data-page-node-id="ZcYnQteQb0MUcZiIlRwwui"></div>
+  </div>
+
+  <div class="grid2" data-page-node-id="IorrIL8CYeVlyXDJaCWIwe">
+    <div class="card" data-page-node-id="MzwHfHpU19crugtkuLtFJW">
+      <h3 data-page-node-id="c3WUxZf9mS7e7QuNPTGdbf">最近问答（本机记录）</h3>
+      <div class="hint" data-page-node-id="o92XzjNiAHy7eMGnLC9loS">STORED IN LOCALSTORAGE · 仅自己可见</div>
+      <div id="recent-queries" data-page-node-id="rAoCKRtwe9NOEVh1FwErml"><div class="empty" style="padding:18px" data-page-node-id="f2mfWK9HVeoFZTPHnpl8IY">暂无记录</div></div>
+    </div>
+    <div class="card" data-page-node-id="bCA4kV0lI7E3rwyqnANUpJ">
+      <h3 data-page-node-id="Aa29NNBwQUC4Grza4THFMS">告警与待办</h3>
+      <div class="hint" data-page-node-id="UNGQnXWaHgztllM7dGFWFf">AUTO-GENERATED FROM SYSTEM STATE</div>
+      <div id="alerts" data-page-node-id="puEDpVdXD9uQZssh6bD8Xs"><div class="empty" style="padding:18px" data-page-node-id="wf9IFy6WMUbHKtP82g61m2">加载中…</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 文档资产（CRUD） ══════ -->
+<section class="view" id="v-kb" data-page-node-id="Di2AKGyPspHZnUnzdWUOng">
+  <div class="topbar" data-page-node-id="CgIHypO5gH4tB147QYgTeG">
+    <div data-page-node-id="4r1ZmlQe270hFAaWClOKQP"><div class="crumb" data-page-node-id="ZFxuj4qwhgCUWvZAIRm2gn">LIBRARY // CRUD ENABLED</div><h2 data-page-node-id="pHgM1hA2CRjRfefjMeuaBp">文档资产</h2></div>
+    <div style="display:flex;gap:8px;align-items:center" data-page-node-id="hwsLGB4h4qN83yxbua5QvA">
+      <span class="pill" id="kb-pill" data-page-node-id="f4maRqb3HZunIwDx09u2Q9">—</span>
+      <button class="btn sm ghost" onclick="go('ingest')" data-page-node-id="89zPKQiII8pUsUgdz9BCAb">入库新文档</button>
+    </div>
+  </div>
+
+  <div class="card" data-page-node-id="IvFXb5bexgJSmdbwQFUsr3">
+    <h3 data-page-node-id="89t8giXW1DuAm6gtY3cmGM">全部文档</h3>
+    <div class="hint" data-page-node-id="ljRgowfMBfgKLJaJ9ERyxr">RENAME · REPLACE（原子替换，失败自动回滚） · DELETE</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px" data-page-node-id="cmXAXmDradKY1aeWBNvGd0">
+      <input type="text" id="kb-search" placeholder="搜索文档名…" style="flex:1;max-width:280px" data-page-node-id="h5Z8nBakw5cNedXDcEwn9E">
+      <select id="kb-type-filter" data-page-node-id="tB3Fl4aKyt796Fdw4hwH90"><option value="" data-page-node-id="vJcxPCz1wjBAf68wyuSPgZ">ALL TYPES</option></select>
+      <button class="btn sm ghost" onclick="refreshFiles()" data-page-node-id="VJpyn7wMtUNgqhLJV8iIsU">REFRESH</button>
+    </div>
+    <div id="files-table" data-page-node-id="1IsVpMNbrCytbPG5NXEEEq"><div class="empty" style="padding:18px" data-page-node-id="NxwbrrqMHOV7xNj9lDU5BZ">加载中…</div></div>
+  </div>
+</section>
+
+<!-- ══════ 入库 ══════ -->
+<section class="view" id="v-ingest" data-page-node-id="Hwt6VJVo1qe89tkPHFMU8k">
+  <div class="topbar" data-page-node-id="em5A93KIo2qZBrEjnz8hPG">
+    <div data-page-node-id="Mol20QdE8zQw0Vznyp2jPW"><div class="crumb" data-page-node-id="o8Q541gGrhCeUdOYdUn2Rr">INGEST // UPLOAD & INLINE</div><h2 data-page-node-id="npyYahJbQJCEhitpw7rHmC">入库</h2></div>
+    <button class="btn sm ghost" onclick="go('kb')" data-page-node-id="nzemoVgo3VT3dz2ekqLuo0">查看文档资产</button>
+  </div>
+
+  <div class="drop" id="drop-zone" data-page-node-id="RuHFo0BMW3hdo3BOwT7rb3">
+    <svg viewBox="0 0 24 24" style="width:26px;height:26px;stroke:var(--acc);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" data-page-node-id="9TGFSgm252phJxkf1tiNLB"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" data-page-node-id="9kQFhTw4WoIimFy9Cj9Ftl"/><polyline points="17 8 12 3 7 8" data-page-node-id="0EazcKyCAuulb5yf5MryKH"/><line x1="12" y1="3" x2="12" y2="15" data-page-node-id="fNmGqjn9DbDoJPLgCHX6Vx"/></svg>
+    <div class="big" data-page-node-id="BNRK1Z4hdPtV7bD5nEWech">拖入文档，或点击选择文件</div>
+    <div class="sm" data-page-node-id="VV6wxa4ujRcGSvwrTLIRhO">.MD / .TXT / .PDF · MULTIPLE · 自动切片 + 向量化</div>
+    <input type="file" id="file-input" accept=".txt,.md,.pdf" multiple style="display:none" data-page-node-id="MCf3ia187vaIDeqf2EQ2ea">
+  </div>
+
+  <div class="card" style="margin-top:12px" data-page-node-id="jcrdvEVsFBF2yzg8x3VYAx">
+    <h3 data-page-node-id="f8o26UapbZEq3rIuGHbPvG">快速粘贴入库</h3>
+    <div class="hint" data-page-node-id="fkrVSSVhYSMeYh6tFM7IAA">INLINE TEXT → AUTO CHUNK → VECTORIZE</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap" data-page-node-id="sr2dqkuPzkCzRAUOL26agR">
+      <input type="text" id="text-source" placeholder="来源标题（如：客户答疑 0918）" style="flex:1;min-width:200px" data-page-node-id="pf0Yu0scszhdakAhMTDuda">
+      <select id="text-strategy" style="max-width:260px" data-page-node-id="YEFmdiTxX9fWDjR2Vg9oBW"></select>
+    </div>
+    <textarea id="text-input" rows="4" placeholder="粘贴文本内容…" style="width:100%"></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px" data-page-node-id="R5JLeaeyjDTkoEWpVxnrWq">
+      <button class="btn sm ghost" onclick="previewChunks()" data-page-node-id="TToyzHfgDJ71sQ31XrjkV2">预览切片</button>
+      <button class="btn sm" onclick="ingestText()" data-page-node-id="9vFMqJHBxbbFBzDZNhxkHg">INGEST</button>
+    </div>
+    <div id="preview-result" style="margin-top:10px" data-page-node-id="xfAVM1mdfmpwAqlZddDDTE"></div>
+  </div>
+</section>
+
+<!-- ══════ 切片管理 ══════ -->
+<section class="view" id="v-chunks" data-page-node-id="SVAlfWz9OwX2mrfBQBpLyf">
+  <div class="topbar" data-page-node-id="X4Ps4IqqgwupP7YgKmwqrk">
+    <div data-page-node-id="fpMn3GPWzfi0kbAmAbKGfA"><div class="crumb" data-page-node-id="XU8fHzJADz98N4l0lFUY94">CHUNKS // <span id="chunk-total-label" data-page-node-id="ZamVmMGyO28GCqEym7GMjb">—</span></div><h2 data-page-node-id="LADf014ZwvgVT9XJmR36TI">切片管理</h2></div>
+    <button class="btn sm danger" id="bulk-delete-btn" onclick="bulkDeleteChunks()" style="display:none" data-page-node-id="fCaSmzxi9RNfEAS4Z37wKL">删除选中</button>
+  </div>
+  <div class="card" data-page-node-id="hG9O8GOJE3hqg4rahnVQT2">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" data-page-node-id="aZ3tBKY6iHdhkFGPVgJFam">
+      <input type="text" id="chunk-keyword" placeholder="搜索切片内容…" style="flex:1;min-width:180px" data-page-node-id="o41K6ZoT5UujdRVD7ktHDo">
+      <select id="chunk-filter-source" style="max-width:200px" data-page-node-id="vIQ8BT9ZeDd5iFR3zoMiLC"><option value="" data-page-node-id="ODoEuj7fscii8VDLQR2kZX">ALL SOURCES</option></select>
+      <select id="chunk-filter-strategy" style="max-width:160px" data-page-node-id="8x8N1DVKBBZAirq49jpYpf"><option value="" data-page-node-id="NuqEqPLTcoWLr812Pk2exC">ALL STRATEGIES</option></select>
+      <button class="btn sm ghost" onclick="refreshChunks()" data-page-node-id="YxGG7cm2SoeasWU93PYWHa">REFRESH</button>
+    </div>
+    <div id="chunk-list" data-page-node-id="KFQPHhyxIrWHI8GHWOygQB"></div>
+    <div class="pagination" id="chunk-pagination" data-page-node-id="0J5kdd7oZOPqSPJc2Qg5hK"></div>
+  </div>
+</section>
+
+<!-- ══════ 提示词 ══════ -->
+<section class="view" id="v-prompt" data-page-node-id="rR8P8zEnYlCU2BKjpetbvX">
+  <div class="topbar" data-page-node-id="JT7AnXbI8uvjfV3a9SdXVp">
+    <div data-page-node-id="nIAFpj7gxbSznlQAnjV8Nn"><div class="crumb" data-page-node-id="csLJkYafrTMtN44zAGoETd">PROMPT // <span id="prompt-meta" data-page-node-id="vs510VtUaRzMIvovbJAloX">—</span></div><h2 data-page-node-id="xf8HGiC0EmgBAsE4mbG11w">提示词</h2></div>
+    <div style="display:flex;gap:8px" data-page-node-id="KlK2cL7hMKVwzyZI8tvBpz">
+      <button class="btn sm ghost" onclick="loadPrompt()" data-page-node-id="X7jlkMWE15hdnoL0BTewAy">重新加载</button>
+      <button class="btn sm" onclick="savePrompt()" data-page-node-id="6X2iw8onInSiobmaFUejU4">SAVE</button>
+    </div>
+  </div>
+  <div class="grid2" style="grid-template-columns:1.7fr 1fr" data-page-node-id="SAmctPx6p16Jzjgwodq8OB">
+    <div data-page-node-id="Axq53RyGU20wqBxGQzPNog">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px" data-page-node-id="BfWSxkoRhaEf51J2PD4Gsi">
+        <select id="prompt-select" style="max-width:240px" data-page-node-id="dRUQNPiZ6cfuEjAcOzoB1F"></select>
+      </div>
+      <div class="editor" style="padding:0" data-page-node-id="BmENf509fIgJGb1rQi2krp"><textarea id="prompt-content" style="width:100%;min-height:260px;border:none;background:transparent;color:#C9D4E5;font-family:var(--mono);font-size:12px;line-height:1.9;padding:14px 16px"></textarea></div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:10px" data-page-node-id="L2U99MZKF2rLd67IbV25mb">
+        <span class="badge b-ok" id="prompt-syntax" data-page-node-id="g6oaXSAKxm9PvjUakvJjIL">READY</span>
+        <span class="mono" style="font-size:10px" id="prompt-chars" data-page-node-id="qLVVJQpADDsJPKVwEPShLp">—</span>
+      </div>
+    </div>
+    <div class="card" data-page-node-id="J7obOLHF0I1M5YyyRKZIEz">
+      <h3 data-page-node-id="LQrq2CsSAfrSbjs4d3ujNB">占位符说明</h3>
+      <div class="hint" data-page-node-id="q8NQ2znitVH5Dgjj5rXwLr">PLACEHOLDERS INJECTED AT QUERY TIME</div>
+      <table data-page-node-id="ZYqBw9fckH0xcL2niuyeyf">
+        <tr data-page-node-id="9qFpPRKqnSdNN9UN4qaovJ"><td style="border:none;padding:5px 0" data-page-node-id="a2DNeocsHsv1Zafz1GZzd2"><span class="mono" style="color:var(--warn)" data-page-node-id="Gu5k9RVoxyXFIYOwUoVez6">{question}</span></td><td style="border:none;padding:5px 0" class="preview" data-page-node-id="oaFeOua1O6o2ttEHp97IlL">用户问题</td></tr>
+        <tr data-page-node-id="0duhSK15iQniPpq5r5I4qx"><td style="border:none;padding:5px 0" data-page-node-id="4Yky1lsC9XACG23UmPHQX5"><span class="mono" style="color:var(--warn)" data-page-node-id="CQTsM00qiuDBCGmCxAvh9c">{context}</span></td><td style="border:none;padding:5px 0" class="preview" data-page-node-id="XOa1CXrWJmALlYtss1PT0J">检索到的资料</td></tr>
+      </table>
+      <div class="hint" style="margin-top:12px" data-page-node-id="4FEHsSwTDHuA1Bt3cXX7Cy">保存在 prompts/ 目录；留空时使用内置默认版本。保存后即时生效。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ 系统运维 ══════ -->
+<section class="view" id="v-sys" data-page-node-id="u8BtvNk7q6ry6ZsDlvGDKb">
+  <div class="topbar" data-page-node-id="2Z8AcwvPHMnDxeBCDiOkRI">
+    <div data-page-node-id="4rX8WXo2ncYGrkVglTEyMm"><div class="crumb" data-page-node-id="tsxJCjgUYDHYS3fhUrsT81">OPS // SYSTEM & CACHE</div><h2 data-page-node-id="FC2zEcK84Q6uimlvngJm2u">系统运维</h2></div>
+    <span class="pill" id="sys-build" data-page-node-id="9cl5PIeE8H149Shu6j0Ehb">—</span>
+  </div>
+
+  <div class="card" style="margin-bottom:12px" data-page-node-id="fmwyEp2E02pbhDA6uh8TQK">
+    <h3 data-page-node-id="C97Tk3HqsFqmqT2tjy3yXJ">省算策略 · Token 经济</h3>
+    <div class="hint" data-page-node-id="9TZUtx0dkvVt4PxWC3uLF8">4-LAYER FUNNEL · 服务端实测埋点 · LLM 只在最后一层</div>
+    <div class="grid4" style="grid-template-columns:repeat(4,1fr);margin:4px 0 8px" data-page-node-id="Z6ZYliA1vLz8DxJwlQCOGH">
+      <div class="kpi" style="padding:12px 14px" data-page-node-id="QaDweqkKFDLIR70v3tiWAv"><div class="lb" data-page-node-id="ukW4fPe5YGPjRCzDLUvyRG">L0 精确缓存</div><div class="num c-ok" id="tk-l0" style="font-size:19px" data-page-node-id="SWE364mIBauhuBuUDX1Iq8">— <small data-page-node-id="UB1BAiUD2Mrm2cA8kGIGbZ">tok</small></div><div class="foot" id="tk-l0-foot" data-page-node-id="Dk5MMt5RTslTQR02G5mQbv">同问法直返快照</div></div>
+      <div class="kpi" style="padding:12px 14px" data-page-node-id="xITsZGjSB0DcFoUACAHPra"><div class="lb" data-page-node-id="ozHovgUSaE0ElSHHbGrIOy">L1 语义近似</div><div class="num c-ok" id="tk-l1" style="font-size:19px" data-page-node-id="uC5jSxHQPURMVLQiYVasZb">— <small data-page-node-id="a0LWJaAaUDx0Yqim4wp4of">tok</small></div><div class="foot" id="tk-l1-foot" data-page-node-id="QeLeHYgTQ7uSZd6XfwcBHX">换种问法也命中</div></div>
+      <div class="kpi" style="padding:12px 14px" data-page-node-id="Ow2SN6zMqD8EzeRxi1UuzG"><div class="lb" data-page-node-id="BXWkU6KZEYs0BkpIY1lMTh">L2 拒答短路</div><div class="num c-warn" id="tk-l2" style="font-size:19px" data-page-node-id="J0Cv0KMcIWHDOpJuDhpxoG">— <small data-page-node-id="0MP3vFgzspcgiuzoxbKvJr">tok</small></div><div class="foot" id="tk-l2-foot" data-page-node-id="tipOPvRyYtv46OlDZZTIgt">低分直接拒答</div></div>
+      <div class="kpi dark" style="padding:12px 14px" data-page-node-id="KCJtPkegYKuxkqJ2eDXZaO"><div class="lb" data-page-node-id="V4kiQ4G2fSUhSZQ5Tx8Soy">L3 完整 RAG</div><div class="num c-acc" id="tk-l3" style="font-size:19px" data-page-node-id="onehNXHdt0pHTOtEk3QQPv">— <small data-page-node-id="uD1leYG1PIF2ik4TJS3TeA">tok</small></div><div class="foot" id="llm-cost-foot" data-page-node-id="29XE2d9sUDx87KzJmAdoHd">—</div></div>
+    </div>
+    <div id="tk-funnel" style="display:flex;height:8px;border-radius:5px;overflow:hidden;background:var(--line)"></div>
+    <div class="hint" id="tk-sum" style="margin-top:7px">加载中…</div>
+  </div>
+
+  <div class="grid2even" style="margin-bottom:12px" data-page-node-id="zTpMaoFjodGBXstwfbqgfH">
+    <div class="card" data-page-node-id="XGsDq0BdYTAJRbC8I3HnsA">
+      <h3 data-page-node-id="VDBihm4oYtaccaHX6gLv73">Embedding 引擎</h3>
+      <div class="hint" data-page-node-id="NbC7Zpw16q5tZatQyfGXRk">SWITCH → AUTO REBUILD → PERSISTED</div>
+      <div id="embed-info" data-page-node-id="9luDThDIcebkuu8wAMcICt"><div class="empty" style="padding:14px" data-page-node-id="D8g4I5YnTterItTX3uVmQS">加载中…</div></div>
+    </div>
+    <div class="card" data-page-node-id="7BeOEuCn4mJcbjRPiBTATx">
+      <h3 data-page-node-id="D4dDfhszXUWPga26loxdEH">答案缓存</h3>
+      <div class="hint" data-page-node-id="4Mz07fcrD4Sf0ldJloVqX5">SNAPSHOT · AUTO-INVALIDATED BY KB FINGERPRINT</div>
+      <div class="grid4" style="grid-template-columns:repeat(3,1fr);margin:4px 0 8px" data-page-node-id="6tKqH7J5FbDLQzaryPIdsu">
+        <div class="kpi" style="padding:10px 12px" data-page-node-id="JYptQQTA3XUT8g2OfK598x"><div class="lb" data-page-node-id="zwXzrJqG5B5Gf2ApeKG0fD">SNAPSHOTS</div><div class="num" style="font-size:21px" id="c-snap" data-page-node-id="KXbnISGlrs7JfQalfhkZ0e">—</div></div>
+        <div class="kpi" style="padding:10px 12px" data-page-node-id="51EaeMdDl5fPrWXpyMvOTp"><div class="lb" data-page-node-id="cRYTyXnFk94bkNBT1ZTKOu">HOT</div><div class="num c-ok" style="font-size:21px" id="c-hot" data-page-node-id="qZtoRDf122tuKzJG5yNMli">—</div></div>
+        <div class="kpi" style="padding:10px 12px" data-page-node-id="awwwP7zao4Xyx9QpA8AE4D"><div class="lb" data-page-node-id="wCeCUw50O9JdfVnQ4x4tS2">STALE</div><div class="num c-warn" style="font-size:21px" id="c-stale" data-page-node-id="oCi3mkFmGLbG5J9H1o5fGx">—</div></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end" data-page-node-id="18WqS9EFHMLzoX5lt5o5Fi">
+        <button class="btn sm ghost" onclick="resetTokenEconomy()">埋点归零</button>
+        <button class="btn sm ghost" onclick="clearCache()" style="color:var(--bad);border-color:rgba(255,92,92,.4)" data-page-node-id="UCDSCi3iyI0zAmriysCEYf">清空全部</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2even" data-page-node-id="Sna5cBnY82sldVXlzzhQCA">
+    <div class="card" data-page-node-id="wwgDwtsLEwRRD6cuzqp2Gx">
+      <h3 data-page-node-id="rtVFxdlu8Q0X2zFmb0AniR">环境</h3>
+      <div class="hint" data-page-node-id="40zS2HyaTT4pFNk3jefTgV">READ-ONLY · MIRRORS CLOUDBASE</div>
+      <div id="env-info" data-page-node-id="yLInfyb34DPHAVeKi8ioEs"><div class="empty" style="padding:14px" data-page-node-id="tv0CqEOY24Otf5Gsa3IWk8">加载中…</div></div>
+    </div>
+    <div class="card" data-page-node-id="TKBzZ87y9iMxxI0gd0DLq2">
+      <h3 data-page-node-id="NsZAyY9w4dOmYadFSzXOMC">发布状态</h3>
+      <div class="hint" data-page-node-id="40iQpX8QmaBg4WlLUiHkMU">ROLLBACK VIA rollback.sh ON SERVER</div>
+      <div id="release-info" data-page-node-id="KAZIiUGTEJHzZMAZ9TEVhM"><div class="empty" style="padding:14px" data-page-node-id="ldHvAY21tO3whYZx4Mkzpo">加载中…</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="note" data-page-node-id="9BPaHnxX8TRqiiLdtVGn0X">V5 DEEP-SPACE CONSOLE · 全部功能走同源 API · 无外部依赖（字体经 CDN，失败自动回退系统字体）</div>
+</main>
+<div class="theme-sw">
+  <button id="th-dark" class="on" onclick="setTheme('dark')">深空 · 清爽</button>
+  <button id="th-light" onclick="setTheme('light')">墨金 · 高端</button>
+</div>
+
+</div>
+
+<!-- Modal：编辑切片 -->
+<div id="chunk-modal" style="display:none" data-page-node-id="PdOLCFj8lteXP0fwQ0gEua">
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()" data-page-node-id="R1TGRG4a94QStvJQRBkXTT">
+    <div class="modal" data-page-node-id="HS7xvyJYWoy74dyDQ7T8mr">
+      <h4 data-page-node-id="ZouXv2A5qAjvM7EcUSfKPe">编辑切片 <span class="mono" style="color:var(--ink3)" id="chunk-modal-id-label" data-page-node-id="P0n4PScHroLJErnk0MxQIw"></span></h4>
+      <input type="hidden" id="chunk-modal-id" data-page-node-id="1SJ82BeXn6LhHZIYVFjTJJ">
+      <label data-page-node-id="MchR9ipn9u8RKdjR0b1dBd">SOURCE</label>
+      <input type="text" id="chunk-modal-source" style="width:100%;margin-bottom:4px" data-page-node-id="AG7tcddzySghMHtu6a4GT5">
+      <label data-page-node-id="lWKU8HrxHrm1Ll7uhrKJEv">STRATEGY</label>
+      <input type="text" id="chunk-modal-strategy" disabled style="width:100%;margin-bottom:4px;opacity:.5" data-page-node-id="gqI0PGzWet3dEXSi2V2Xew">
+      <label data-page-node-id="Ra2HqHYNY3b6tQVUDSZawA">CONTENT</label>
+      <textarea id="chunk-modal-text" style="width:100%;min-height:150px"></textarea>
+      <div class="row-end" data-page-node-id="C58ar2DS0VPZwughB6N33F">
+        <button class="btn sm ghost" onclick="closeModal()" data-page-node-id="8uSDnv4cHgjgOWTPrOOBiC">取消</button>
+        <button class="btn sm" onclick="saveChunkEdit()" data-page-node-id="0roqShpy8LUArC5v9JBKYw">SAVE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal：重命名文档 -->
+<div id="rename-modal" style="display:none" data-page-node-id="xeRiwBqOgTE3MecpL8Z9bC">
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()" data-page-node-id="ieANKtMGVSDooN7B1qDea9">
+    <div class="modal" style="max-width:440px" data-page-node-id="EAS1WkGBA1k3pzCV92NhQb">
+      <h4 data-page-node-id="XlYzTohhDCP9bS6Sl2wANE">重命名文档</h4>
+      <input type="hidden" id="rename-old" data-page-node-id="hVk4WOg9bivHsd6BGoP8uH">
+      <label data-page-node-id="VzjSFzWUrAJIX9lHcVFwUr">新名称（含扩展名）</label>
+      <input type="text" id="rename-new" style="width:100%" data-page-node-id="mNG1kCN4kFjoVAKd2SWVb5">
+      <div class="hint" style="margin-top:8px" data-page-node-id="2k2dshjx4XNBNbw5LKOrEB">仅改标签，不重建向量，缓存不受影响。</div>
+      <div class="row-end" data-page-node-id="NZcfBVkU5Fv77WO0REEy2o">
+        <button class="btn sm ghost" onclick="closeModal()" data-page-node-id="xFN1zVKXfMlDjXcC5i10kd">取消</button>
+        <button class="btn sm" onclick="submitRename()" data-page-node-id="Xy5U6xIgwpK9tgm1XyXm7T">RENAME</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal：替换文档 -->
+<div id="replace-modal" style="display:none" data-page-node-id="9X07jbUMtwmV5LnfZEs0HZ">
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()" data-page-node-id="1gH5XZJV645HiEYrEXIIqL">
+    <div class="modal" data-page-node-id="L6Q1SJIETLTYKGgRQHDUlZ">
+      <h4 data-page-node-id="aIJWfmzbjU0yu3Lkm9nOvo">替换文档 <span class="mono" style="color:var(--ink3)" id="replace-source-label" data-page-node-id="RVot6RGOyR6CNFBaDYhxxi"></span></h4>
+      <input type="hidden" id="replace-source" data-page-node-id="YszMXKrElVCtsZdNvhGneK">
+      <label data-page-node-id="T51sQzMrxYISIwAHwG8nHf">新内容（将整体替换该文档全部切片）</label>
+      <textarea id="replace-text" style="width:100%;min-height:170px" placeholder="粘贴新内容…"></textarea>
+      <div class="hint" style="margin-top:8px;color:var(--warn)" data-page-node-id="uItFzSTVsBewcXBIWXiIoZ">⚠ 原子操作：失败自动回滚，旧切片不会丢失。</div>
+      <div class="row-end" data-page-node-id="JFFiHSvK4jV7QHBpuWAGyF">
+        <button class="btn sm ghost" onclick="closeModal()" data-page-node-id="LfI1kobTGS5QuxGI8V5Ffi">取消</button>
+        <button class="btn sm" onclick="submitReplace()" data-page-node-id="Bzc8drvTdAuE6dQKpOjwVy">REPLACE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════ V5 Deep-Space Console · 前端逻辑 ═══════════ */
+const API = '';
+const API_KEY = '{{AUTO_API_KEY}}';
+const headers = () => {
+  const h = {'Content-Type': 'application/json'};
+  if (API_KEY) h['X-API-Key'] = API_KEY;
+  return h;
+};
+const authOnly = () => (API_KEY ? {'X-API-Key': API_KEY} : {});
+
+async function api(path, opts={}) {
+  const res = await fetch(API + path, { ...opts, headers: { ...headers(), ...(opts.headers||{}) } });
+  if (!res.ok) {
+    const err = await res.text().catch(()=>res.statusText);
+    throw new Error(`${res.status}: ${err}`);
+  }
+  return res.json();
+}
+
+function toast(msg, type='success') {
+  const d = document.createElement('div');
+  d.className = 'toast ' + type;
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(), 2600);
+}
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ─── 主题切换（记忆用户选择）─── */
+function setTheme(t){
+  document.body.dataset.theme = t;
+  try{ localStorage.setItem('portal_theme', t); }catch(e){}
+  document.getElementById('th-dark').classList.toggle('on', t==='dark');
+  document.getElementById('th-light').classList.toggle('on', t==='light');
+}
+(function(){
+  let t='dark';
+  try{ t = localStorage.getItem('portal_theme') || 'dark'; }catch(e){}
+  if(t!=='dark'){ document.body.dataset.theme=t; }
+  const dk=document.getElementById('th-dark'), lt=document.getElementById('th-light');
+  if(dk){ dk.classList.toggle('on',t==='dark'); lt.classList.toggle('on',t==='light'); }
+})();
+
+/* ─── 视图切换 ─── */
+const LOADERS = { dash: loadDash, kb: refreshFiles, ingest: loadStrategies, chunks: refreshChunks, prompt: loadPrompt, sys: loadSys, chat: loadChatMeta };
+function go(v) {
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.nav a').forEach(e=>e.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelector('.nav a[data-v="'+v+'"]').classList.add('on');
+  if (LOADERS[v]) try { LOADERS[v](); } catch(e) { console.warn(v, e); }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.nav a').forEach(a => a.onclick = () => go(a.dataset.v));
+
+/* ─── 本机会话统计（localStorage，M2 将升级为服务端埋点）── */
+const LS_KEY = 'ltc_rag_session_stats_v1';
+function lsStats() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {queries:0,hits:0,totalMs:0,log:[]}; } catch(e){ return {queries:0,hits:0,totalMs:0,log:[]}; } }
+function lsSave(s) { try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch(e){} }
+
+/* ─── 健康状态（侧栏 + 全局） ─── */
+let HEALTH = {};
+async function loadHealth() {
+  try {
+    HEALTH = await api('/health');
+  } catch(e) { HEALTH = {docs_count:0}; }
+  const ok = (HEALTH.docs_count ?? 0) > 0;
+  document.getElementById('foot-status').innerHTML =
+    `<span class="dot${ok?'':' warn'}"></span>${ok?'PROD · ONLINE':'DEGRADED'}`;
+  document.getElementById('foot-version').textContent = 'v' + (HEALTH.version||'5') + ' · ' + (HEALTH.embed_backend||'tfidf');
+}
+async function loadChatMeta() {
+  await loadHealth();
+  document.getElementById('chat-chunks').textContent = (HEALTH.docs_count ?? 0) + ' CHUNKS LOADED';
+  document.getElementById('chat-engine').textContent = (HEALTH.embedding||'—').toUpperCase().slice(0,28);
+  document.getElementById('chat-engine').className = 'pill' + (HEALTH.docs_count>0?' ok':' warn');
+  document.getElementById('p-embed').textContent = HEALTH.embedding || '—';
+  document.getElementById('p-llm').textContent = HEALTH.llm_model || 'glm-4-flash';
+}
+
+/* ─── 问答 ─── */
+let useRerank = true, topK = 5;
+document.getElementById('sw-rerank').onclick = function(){ useRerank = !useRerank; this.classList.toggle('on', useRerank); };
+document.getElementById('query-input').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); doQuery(); }});
+document.querySelectorAll('.chip').forEach(c => c.onclick = () => { document.getElementById('query-input').value = c.textContent.replace('▸ ',''); doQuery(); });
+
+async function doQuery() {
+  const q = document.getElementById('query-input').value.trim();
+  if (!q) { toast('请输入问题', 'error'); return; }
+  const btn = document.getElementById('query-btn');
+  btn.disabled = true; btn.textContent = 'RUNNING…';
+  const start = Date.now();
+  let result;
+  try {
+    result = await api('/query', { method:'POST', body: JSON.stringify({ question: q, use_rerank: useRerank, top_k: topK }) });
+  } catch(e) {
+    toast('问答失败: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'EXECUTE';
+    return;
+  }
+  const dt = Date.now() - start;
+  renderAnswer(q, result, dt);
+  renderScores(result);
+  btn.disabled = false; btn.textContent = 'EXECUTE';
+  const s = lsStats();
+  s.queries++; if (result.cache_hit) s.hits++; s.totalMs += dt;
+  s.log = [{q, t: Date.now(), dt, hit: !!result.cache_hit, refs: (result.sources||[]).length}, ...(s.log||[])].slice(0,30);
+  lsSave(s);
+}
+
+function renderAnswer(q, r, dt) {
+  const flow = document.getElementById('chat-flow');
+  const hit = r.cache_hit === true;
+  const rejected = !r.sources || r.sources.length === 0;
+  const who = [
+    '<span style="color:var(--acc)">◆ AGENT</span>',
+    `<span>${(r.llm_used||'—')}</span>`,
+    `<span>${(dt/1000).toFixed(1)}s</span>`,
+    hit ? '<span class="badge b-ok">CACHE HIT · 0 TOKENS</span>' : (rejected ? '<span class="badge b-warn">NO LLM PATH</span>' : ''),
+    r.hybrid?.use_rerank ? '<span class="badge b-info">RERANK</span>' : ''
+  ].filter(Boolean).join(' ');
+  const cites = rejected
+    ? '<span class="cite rej">⊘ 知识库未覆盖 · 未走生成（guardrail 路径）</span>'
+    : (r.sources||[]).map(s=>`<span class="cite" title="${esc(s.text||'').slice(0,120)}"><b>${(s.score*100).toFixed(0)}%</b> ${esc(s.source)}</span>`).join('');
+  const div = document.createElement('div');
+  div.innerHTML = `
+    <div class="msg-u"><div class="b">${esc(q)}</div></div>
+    <div class="msg-a">
+      <div class="who">${who}</div>
+      <div class="ans${rejected?' rejected':''}">${esc(r.answer || '（知识库暂无回答）')}</div>
+      <div class="cites">${cites}</div>
+    </div>`;
+  const empty = flow.querySelector('.empty'); if (empty) empty.remove();
+  flow.appendChild(div);
+  document.getElementById('query-input').value = '';
+}
+
+function renderScores(r) {
+  const box = document.getElementById('debug-scores');
+  const srcs = (r.sources||[]).slice(0,6);
+  if (!srcs.length) { box.innerHTML = '<div class="empty" style="padding:14px;color:var(--warn)">无检索命中 · 未调用生成</div>'; return; }
+  box.innerHTML = srcs.map(s=>`
+    <div class="sbar">
+      <div class="lb"><span title="${esc(s.text||'').slice(0,80)}">${esc((s.source||'').slice(0,22))}</span><b>${(s.score*100).toFixed(0)}%</b></div>
+      <div class="track"><div class="fill" style="width:${Math.min(100, s.score*100).toFixed(0)}%"></div></div>
+    </div>`).join('');
+}
+
+/* ─── 运行总览 ─── */
+async function loadDash() {
+  await loadHealth();
+  let kb = {}; let cache = {};
+  try { kb = await api('/kb'); } catch(e){}
+  try { cache = await api('/cache/stats'); } catch(e){}
+  const s = lsStats();
+
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('zh-CN');
+  document.getElementById('k-chunks').textContent = HEALTH.docs_count ?? 0;
+  document.getElementById('k-files').textContent = `${kb.total_files ?? Object.keys(kb.files||{}).length} 文档 · ${HEALTH.embed_backend||'tfidf'}`;
+  document.getElementById('k-queries').textContent = s.queries;
+  document.getElementById('k-q-avg').textContent = s.queries ? `平均响应 ${(s.totalMs/s.queries/1000).toFixed(1)}s` : '平均响应 —';
+  document.getElementById('k-q-trend').textContent = s.log?.length ? `近 ${Math.min(30,s.log.length)} 条已记录` : 'NO DATA';
+  const hitrate = s.queries ? Math.round(s.hits/s.queries*100) : 0;
+  document.getElementById('k-hitrate').innerHTML = hitrate + '<small>%</small>';
+  document.getElementById('k-cache-sub').textContent = `${cache.total_snapshots ?? 0} 快照 · ${(cache.stale_count||0)} stale`;
+  document.getElementById('k-engine').textContent = (HEALTH.embedding||'—').split('(')[0].trim().slice(0,14);
+  document.getElementById('k-engine-sub').textContent = '+BM25+RRF · rerank ' + (useRerank?'ON':'OFF');
+  document.getElementById('k-dim').textContent = HEALTH.vector_dim ? HEALTH.vector_dim + '-D' : '—';
+
+  document.getElementById('pn-files').textContent = `● ${kb.total_files ?? '—'} FILES`;
+  document.getElementById('pn-chunks').textContent = `● ${HEALTH.docs_count ?? '—'}`;
+  document.getElementById('pn-embed').textContent = `● ${HEALTH.embed_backend || 'tfidf'}`;
+  document.getElementById('pn-bm25').textContent = HEALTH.bm25_available ? '● BM25+RRF' : '● VECTOR ONLY';
+  document.getElementById('pn-llm').textContent = `● ${(HEALTH.llm_model||'glm-4f').slice(0,12)}`;
+
+  const authProd = (HEALTH.api_key_mode||'').includes('生产') || (HEALTH.api_key_mode||'').includes('已开启');
+  document.getElementById('sysline').innerHTML = `
+    <span class="sysitem"><span class="sdot${authProd?'':' warn'}"></span>AUTH <b>${esc(HEALTH.api_key_mode||'—')}</b></span>
+    <span class="sysitem"><span class="sdot${HEALTH.feishu_configured?'':' warn'}"></span>FEISHU <b>${HEALTH.feishu_configured?'CONFIGURED':'NOT SET'}</b></span>
+    <span class="sysitem"><span class="sdot${(cache.stale_count||0)>0?' warn':''}"></span>CACHE STALE <b>${cache.stale_count||0}</b></span>
+    <span class="sysitem"><span class="sdot"></span>GUARDRAIL <b>M2</b></span>`;
+
+  const alerts = [];
+  if ((cache.stale_count||0) > 0) alerts.push(['SUGGEST','warn',`${cache.stale_count} 条缓存快照已失效（KB 指纹变更）`,'go(\'sys\')']);
+  if (s.queries > 0 && s.hits === 0 && s.queries >= 5) alerts.push(['TIP','info','本机问答暂无缓存命中，可重复提问同一问题观察 L0 命中','']);
+  if (!HEALTH.docs_count) alerts.push(['RISK','bad','知识库为空：请先在「入库」上传文档','go(\'ingest\'])']);
+  document.getElementById('alerts').innerHTML = alerts.length
+    ? alerts.map(([tag,cls,msg,act])=>`<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><span class="badge b-${cls}">${tag}</span><span style="flex:1;font-size:12px;color:var(--ink2)">${msg}</span>${act?`<button class="btn sm ghost" onclick="${act}">处理</button>`:''}</div>`).join('')
+    : '<div class="empty" style="padding:14px">全部正常 · 无待办</div>';
+
+  const recent = (s.log||[]).slice(0,6);
+  document.getElementById('recent-queries').innerHTML = recent.length
+    ? recent.map(l=>`<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><span style="flex:1;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.q)}</span><span class="mono">${(l.dt/1000).toFixed(1)}s</span><span class="badge ${l.hit?'b-ok':'b-info'}">${l.hit?'CACHE':'LIVE'}</span></div>`).join('')
+    : '<div class="empty" style="padding:14px">暂无记录 · 去问答台提问</div>';
+}
+
+/* ─── 文档资产（CRUD） ─── */
+async function refreshFiles() {
+  const wrap = document.getElementById('files-table');
+  try {
+    const kb = await api('/kb');
+    const search = (document.getElementById('kb-search').value||'').trim().toLowerCase();
+    const typeF = document.getElementById('kb-type-filter').value;
+    let files = Object.values(kb.files || {});
+    // 类型下拉（首次填充）
+    const tf = document.getElementById('kb-type-filter');
+    if (tf.options.length <= 1) {
+      const types = [...new Set(files.map(f=>f.file_type||'.unknown'))].sort();
+      tf.innerHTML = '<option value="">ALL TYPES</option>' + types.map(t=>`<option value="${t}">${t}</option>`).join('');
+    }
+    if (search) files = files.filter(f=>f.source.toLowerCase().includes(search));
+    if (typeF) files = files.filter(f=>(f.file_type||'.unknown')===typeF);
+    files.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+
+    document.getElementById('kb-pill').textContent = `${kb.total_files ?? files.length} FILES · ${kb.total_chunks ?? '—'} CHUNKS`;
+    if (!files.length) { wrap.innerHTML = '<div class="empty" style="padding:20px">没有匹配的文档 · 去「入库」添加</div>'; return; }
+    const fmtD = d => d ? new Date(d).toLocaleDateString() : '—';
+    wrap.innerHTML = `<table>
+      <tr><th>DOCUMENT</th><th>TYPE</th><th>CHUNKS</th><th>CHARS</th><th>INGESTED</th><th style="text-align:right">OPERATIONS</th></tr>
+      ${files.map(f=>{
+        const safe = esc(f.source);
+        const jsName = f.source.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `<tr>
+          <td class="preview" style="max-width:240px" title="${safe}">${safe}</td>
+          <td><span class="badge b-info">${esc(f.file_type||'—')}</span></td>
+          <td class="mono">${f.chunks}</td>
+          <td class="mono">${(f.total_chars||0).toLocaleString()}</td>
+          <td class="mono">${fmtD(f.created_at)}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn sm ghost" onclick="openRename('${jsName}')">重命名</button>
+            <button class="btn sm ghost" onclick="openReplace('${jsName}')">替换</button>
+            <button class="btn sm ghost danger" onclick="deleteSource('${jsName}')">删除</button>
+          </td></tr>`;}).join('')}
+    </table>`;
+  } catch(e) {
+    wrap.innerHTML = `<div class="empty" style="padding:18px;color:var(--bad)">加载失败: ${esc(e.message)}</div>`;
+  }
+}
+document.getElementById('kb-search').addEventListener('input', refreshFiles);
+document.getElementById('kb-type-filter').addEventListener('change', refreshFiles);
+
+function openRename(source) {
+  document.getElementById('rename-old').value = source;
+  document.getElementById('rename-new').value = source;
+  document.getElementById('rename-modal').style.display = '';
+}
+async function submitRename() {
+  const oldS = document.getElementById('rename-old').value;
+  const newS = document.getElementById('rename-new').value.trim();
+  if (!newS || newS === oldS) { closeModal(); return; }
+  try {
+    const r = await api('/kb/source/' + encodeURIComponent(oldS), { method:'PATCH', body: JSON.stringify({ new_source: newS }) });
+    toast(`✓ 已重命名（${r.renamed} 切片）`);
+    closeModal(); refreshFiles();
+  } catch(e) { toast('重命名失败: ' + e.message, 'error'); }
+}
+
+function openReplace(source) {
+  document.getElementById('replace-source').value = source;
+  document.getElementById('replace-source-label').textContent = source;
+  document.getElementById('replace-text').value = '';
+  document.getElementById('replace-modal').style.display = '';
+}
+async function submitReplace() {
+  const source = document.getElementById('replace-source').value;
+  const text = document.getElementById('replace-text').value.trim();
+  if (!text) { toast('请粘贴新内容', 'error'); return; }
+  if (!confirm(`确定替换 "${source}" 的全部切片？\n（原子操作，失败自动回滚）`)) return;
+  try {
+    const r = await api('/kb/source/' + encodeURIComponent(source) + '/replace', { method:'POST', body: JSON.stringify({ text }) });
+    toast(`✓ 已替换：移除 ${r.removed} → 入库 ${r.ingested} 切片`);
+    closeModal(); refreshFiles();
+  } catch(e) { toast('替换失败: ' + e.message, 'error'); }
+}
+
+async function deleteSource(source) {
+  if (!confirm(`确定删除 "${source}" 的全部切片？此操作不可恢复。`)) return;
+  try {
+    const kb = await api('/kb');
+    const ids = (kb.ids_by_source || {})[source] || [];
+    for (const id of ids) { try { await api('/chunks/' + id, { method:'DELETE' }); } catch(e){} }
+    toast(`✓ 已删除 ${ids.length} 条切片`);
+    refreshFiles(); refreshOptionFilters();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ─── 入库 ─── */
+async function loadStrategies() {
+  const sel1 = document.getElementById('text-strategy');
+  if (sel1.options.length) return;
+  try {
+    const strat = await api('/strategies');
+    const opts = Object.entries(strat.strategies||{}).map(([k,v])=>`<option value="${k}">${v.name||k} · ${v.mode||'para'}</option>`).join('');
+    sel1.innerHTML = opts || '<option value="default">default</option>';
+  } catch(e){ sel1.innerHTML = '<option value="default">default</option>'; }
+}
+async function previewChunks() {
+  const text = document.getElementById('text-input').value.trim();
+  if (!text) { toast('请先粘贴文本', 'error'); return; }
+  const n = text.split(/\n\n+/).filter(p=>p.trim().length>20).length || 1;
+  document.getElementById('preview-result').innerHTML =
+    `<span class="pill">预估 ≈ ${n} 切片（按空行分段，实际以入库策略为准）</span>`;
+}
+async function ingestText() {
+  const text = document.getElementById('text-input').value.trim();
+  const src = document.getElementById('text-source').value.trim() || 'inline';
+  const strat = document.getElementById('text-strategy').value;
+  if (!text) { toast('请输入文本', 'error'); return; }
+  try {
+    const r = await api('/ingest-text', { method:'POST', body: JSON.stringify({ text, source: src, strategy: strat }) });
+    toast(`✓ 入库 ${r.ingested} 切片 · 总计 ${r.total}`);
+    document.getElementById('text-input').value = '';
+    document.getElementById('preview-result').innerHTML = '';
+    refreshOptionFilters();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* 拖拽上传 */
+const dz = document.getElementById('drop-zone');
+dz.onclick = () => document.getElementById('file-input').click();
+document.getElementById('file-input').onchange = uploadFiles;
+['dragover','dragenter'].forEach(ev => dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('drag'); }));
+dz.addEventListener('drop', e => {
+  const dt = e.dataTransfer;
+  if (dt && dt.files.length) { document.getElementById('file-input').files = dt.files; uploadFiles(); }
+});
+async function uploadFiles() {
+  const input = document.getElementById('file-input');
+  if (!input.files.length) return;
+  for (const f of input.files) {
+    const fd = new FormData();
+    fd.append('file', f);
+    try {
+      const r = await fetch(API + '/ingest', { method:'POST', body:fd, headers: authOnly() });
+      if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+      const data = await r.json();
+      toast(`✓ ${f.name} → ${data.ingested} 切片`);
+    } catch(e) { toast(`✗ ${f.name}: ${e.message}`, 'error'); }
+  }
+  refreshOptionFilters();
+}
+
+/* ─── 切片管理 ─── */
+let currentPage = 1;
+const selectedChunks = new Set();
+async function refreshOptionFilters() {
+  try {
+    const opt = await api('/chunks/options');
+    const keep = (sel, list, allLabel) => {
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">${allLabel}</option>` + list.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      if ([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+    };
+    keep(document.getElementById('chunk-filter-source'), opt.sources||[], 'ALL SOURCES');
+    keep(document.getElementById('chunk-filter-strategy'), opt.strategies||[], 'ALL STRATEGIES');
+  } catch(e){}
+}
+async function refreshChunks() {
+  const src = document.getElementById('chunk-filter-source').value;
+  const strat = document.getElementById('chunk-filter-strategy').value;
+  const kw = document.getElementById('chunk-keyword').value.trim();
+  const url = `/chunks?page=${currentPage}&page_size=20` +
+    (src ? `&source=${encodeURIComponent(src)}` : '') +
+    (strat ? `&strategy=${encodeURIComponent(strat)}` : '') +
+    (kw ? `&keyword=${encodeURIComponent(kw)}` : '');
+  try {
+    const r = await api(url);
+    renderChunkList(r);
+  } catch(e) { toast(e.message, 'error'); }
+}
+function renderChunkList(r) {
+  const list = document.getElementById('chunk-list');
+  document.getElementById('chunk-total-label').textContent = `${r.total ?? '—'} RECORDS`;
+  if (!r.chunks || !r.chunks.length) { list.innerHTML = '<div class="empty" style="padding:20px">没有匹配的切片</div>'; document.getElementById('chunk-pagination').innerHTML=''; return; }
+  list.innerHTML = r.chunks.map(c => {
+    const len = c.text.length;
+    const preview = c.text_preview || c.text.slice(0,200) + (len>200?'…':'');
+    const time = c.created_at ? new Date(c.created_at).toLocaleDateString() : '';
+    const cid = String(c.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `
+      <div class="chunk-item">
+        <input type="checkbox" onchange="toggleChunkSelect('${cid}', this.checked)">
+        <div style="flex:1;min-width:0">
+          <div class="meta">
+            <span class="src">${esc(c.source)}</span>
+            <span class="badge b-gray">${esc(c.strategy)}</span>
+            <span>${len}字</span>
+            <span>${time}</span>
+            ${c.score != null ? `<span class="badge b-ok">${(c.score*100).toFixed(0)}%</span>` : ''}
+          </div>
+          <div class="txt" title="${esc(c.text)}">${esc(preview)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <button class="btn sm ghost" onclick="openChunkModal('${cid}')">编辑</button>
+          <button class="btn sm ghost danger" onclick="deleteChunk('${cid}')">删除</button>
+        </div>
+      </div>`;
+  }).join('');
+  const pag = document.getElementById('chunk-pagination');
+  const tp = r.total_pages || 1;
+  let html = `<button ${currentPage<=1?'disabled':''} onclick="goChunkPage(${currentPage-1})">‹</button>`;
+  const s0 = Math.max(1, currentPage-2), s1 = Math.min(tp, currentPage+2);
+  for (let i=s0;i<=s1;i++) html += `<button class="${i===currentPage?'active':''}" onclick="goChunkPage(${i})">${i}</button>`;
+  html += `<button ${currentPage>=tp?'disabled':''} onclick="goChunkPage(${currentPage+1})">›</button><span class="cur">共 ${r.total} 条</span>`;
+  pag.innerHTML = html;
+}
+function goChunkPage(p){ currentPage=p; refreshChunks(); }
+function toggleChunkSelect(id, checked){ if(checked) selectedChunks.add(id); else selectedChunks.delete(id); document.getElementById('bulk-delete-btn').style.display = selectedChunks.size?'':'none'; }
+async function bulkDeleteChunks(){
+  if (!selectedChunks.size) return;
+  if (!confirm(`确定删除选中的 ${selectedChunks.size} 条切片？`)) return;
+  for (const id of selectedChunks){ try{ await api('/chunks/'+id,{method:'DELETE'}); }catch(e){} }
+  selectedChunks.clear();
+  document.getElementById('bulk-delete-btn').style.display='none';
+  toast('✓ 已删除'); refreshChunks();
+}
+async function deleteChunk(id){
+  if (!confirm('确定删除这条切片？')) return;
+  try { await api('/chunks/'+id,{method:'DELETE'}); toast('✓ 已删除'); refreshChunks(); }
+  catch(e){ toast(e.message,'error'); }
+}
+async function openChunkModal(id){
+  try {
+    const r = await api('/chunks/'+id);
+    document.getElementById('chunk-modal-id').value = id;
+    document.getElementById('chunk-modal-id-label').textContent = '#'+String(id).slice(0,8);
+    document.getElementById('chunk-modal-source').value = r.metadata.source || '';
+    document.getElementById('chunk-modal-strategy').value = r.metadata.strategy || '';
+    document.getElementById('chunk-modal-text').value = r.text;
+    document.getElementById('chunk-modal').style.display = '';
+  } catch(e){ toast(e.message,'error'); }
+}
+function closeModal(){ document.querySelectorAll('.modal-overlay').forEach(m=>m.parentElement.style.display='none'); }
+async function saveChunkEdit(){
+  const id = document.getElementById('chunk-modal-id').value;
+  const body = { text: document.getElementById('chunk-modal-text').value, source: document.getElementById('chunk-modal-source').value };
+  try { await api('/chunks/'+id,{method:'PATCH',body:JSON.stringify(body)}); toast('✓ 已保存'); closeModal(); refreshChunks(); }
+  catch(e){ toast(e.message,'error'); }
+}
+['chunk-filter-source','chunk-filter-strategy'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', ()=>{ currentPage=1; refreshChunks(); });
+});
+document.getElementById('chunk-keyword').addEventListener('keydown', e=>{ if(e.key==='Enter'){ currentPage=1; refreshChunks(); }});
+
+/* ─── 提示词 ─── */
+async function loadPrompt(){
+  try {
+    const ps = await api('/prompts');
+    const sel = document.getElementById('prompt-select');
+    if (!sel.options.length) {
+      sel.innerHTML = (ps.prompts||[]).map(p=>`<option value="${esc(p.name)}">${esc(p.name)}${p.builtin?'（内置）':''}</option>`).join('');
+      sel.onchange = loadPrompt;
+    }
+    const r = await api('/prompts/' + sel.value);
+    document.getElementById('prompt-content').value = r.content || '';
+    document.getElementById('prompt-chars').textContent = `${(r.content||'').length} CHARS`;
+  } catch(e){ toast(e.message,'error'); }
+}
+async function savePrompt(){
+  const sel = document.getElementById('prompt-select');
+  const content = document.getElementById('prompt-content').value;
+  try {
+    await api('/prompts/'+sel.value,{method:'PUT',body:JSON.stringify({content})});
+    toast('✓ Prompt 已保存，下次问答生效');
+  } catch(e){ toast(e.message,'error'); }
+}
+document.getElementById('prompt-content').addEventListener('input', function(){
+  document.getElementById('prompt-chars').textContent = `${this.value.length} CHARS`;
+});
+
+/* ─── 系统运维 ─── */
+async function loadSys(){
+  await loadHealth();
+  let cache = {};
+  try { cache = await api('/cache/stats'); } catch(e){}
+  document.getElementById('sys-build').textContent = 'BUILD ' + (HEALTH.version||'—');
+  document.getElementById('c-snap').textContent = cache.total_snapshots ?? '—';
+  document.getElementById('c-hot').textContent = cache.hot_count ?? '—';
+  document.getElementById('c-stale').textContent = cache.stale_count ?? '—';
+  document.getElementById('llm-cost-foot').textContent = HEALTH.llm_model ? HEALTH.llm_model + ' · 按量' : '—';
+  renderTokenEconomy();
+
+  document.getElementById('embed-info').innerHTML = `
+    <table>
+      <tr><td class="preview" style="border:none">当前后端</td><td style="border:none;text-align:right"><span class="badge b-ok">${esc(HEALTH.embed_backend||'tfidf')}</span></td></tr>
+      <tr><td class="preview" style="border:none">模型</td><td style="border:none;text-align:right" class="mono">${esc(HEALTH.embedding||'—')}</td></tr>
+      <tr><td class="preview" style="border:none">维度</td><td style="border:none;text-align:right" class="mono">${HEALTH.vector_dim||'—'}</td></tr>
+      <tr><td class="preview" style="border:none">重建向量</td><td style="border:none;text-align:right"><button class="btn sm ghost" onclick="rebuildEmbed()">REBUILD</button></td></tr>
+    </table>`;
+
+  const authProd = (HEALTH.api_key_mode||'').includes('生产') || (HEALTH.api_key_mode||'').includes('已开启');
+  document.getElementById('env-info').innerHTML = `
+    <table>
+      <tr><td class="preview" style="border:none">鉴权</td><td style="border:none;text-align:right"><span class="badge ${authProd?'b-ok':'b-warn'}">${esc(HEALTH.api_key_mode||'—')}</span></td></tr>
+      <tr><td class="preview" style="border:none">飞书</td><td style="border:none;text-align:right"><span class="badge ${HEALTH.feishu_configured?'b-ok':'b-gray'}">${HEALTH.feishu_configured?'CONFIGURED':'NOT SET'}</span></td></tr>
+      <tr><td class="preview" style="border:none">BM25</td><td style="border:none;text-align:right"><span class="badge ${HEALTH.bm25_available?'b-ok':'b-warn'}">${HEALTH.bm25_available?'ENABLED':'OFF'}</span></td></tr>
+      <tr><td class="preview" style="border:none">文档数</td><td style="border:none;text-align:right" class="mono">${HEALTH.docs_count??'—'}</td></tr>
+    </table>`;
+  document.getElementById('release-info').innerHTML = `
+    <table>
+      <tr><td class="preview" style="border:none">版本</td><td style="border:none;text-align:right" class="mono">v${esc(HEALTH.version||'—')}</td></tr>
+      <tr><td class="preview" style="border:none">回滚方式</td><td style="border:none;text-align:right" class="mono">rollback.sh（服务器侧）</td></tr>
+      <tr><td class="preview" style="border:none">回滚预案</td><td style="border:none;text-align:right"><span class="badge b-ok">READY</span></td></tr>
+    </table>`;
+}
+/* ─── 省算漏斗：服务端实测埋点（/stats/token-economy）─── */
+async function renderTokenEconomy(){
+  let s = null;
+  try { s = await api('/stats/token-economy?days=7'); } catch(e){}
+  const setNum = (id, txt) => { const el = document.getElementById(id); if (el) el.innerHTML = txt + ' <small>tok</small>'; };
+  if (!s) {
+    ['tk-l0','tk-l1','tk-l2','tk-l3'].forEach(id => setNum(id, '—'));
+    const sum = document.getElementById('tk-sum');
+    if (sum) sum.textContent = '埋点未就绪（后端版本 < V5-M2）';
+    return;
+  }
+  const avg = s.avg_tokens_per_llm || 0;
+  const q = s.queries_total || 0;
+  setNum('tk-l0', '0');
+  setNum('tk-l1', '≈0');
+  setNum('tk-l2', '0');
+  setNum('tk-l3', String(Math.round(avg)));
+  document.getElementById('tk-l0-foot').textContent = s.l0_hits + ' 次 · 省 ' + (s.l0_hits*Math.round(avg)) + ' tok';
+  document.getElementById('tk-l1-foot').textContent = s.l1_hits + ' 次' + (s.thresholds && s.thresholds.l1_enabled ? '' : ' · 未启用');
+  document.getElementById('tk-l2-foot').textContent = s.l2_short + ' 次' + (s.thresholds && s.thresholds.l2_enabled ? '' : ' · 未启用');
+  document.getElementById('llm-cost-foot').textContent = s.llm_calls + ' 次真实调用 · ' + (HEALTH.llm_model || 'LLM');
+
+  const seg = [
+    { n: s.l0_hits || 0, c: 'var(--ok)',   t: 'L0' },
+    { n: s.l1_hits || 0, c: 'var(--acc)',  t: 'L1' },
+    { n: s.l2_short || 0, c: 'var(--warn)', t: 'L2' },
+    { n: s.l3_full_rag || 0, c: 'var(--bad)', t: 'L3' },
+  ];
+  const tot = seg.reduce((a, b) => a + b.n, 0) || 1;
+  document.getElementById('tk-funnel').innerHTML = seg.map(x =>
+    `<div title="${x.t} ${x.n}" style="width:${(x.n/tot*100).toFixed(2)}%;background:${x.c}"></div>`
+  ).join('');
+  document.getElementById('tk-sum').textContent =
+    `近 ${s.range_days} 天：${q} 次提问 → 缓存命中率 ${(s.cache_hit_rate*100).toFixed(1)}% · `
+    + `真实调 LLM ${(s.llm_call_rate*100).toFixed(1)}% · 估算省下 ${s.saved_tokens_est} tokens`;
+}
+async function resetTokenEconomy(){
+  if (!confirm('确定清空省算埋点统计？（A/B 实测前归零用，不影响答案缓存）')) return;
+  try { await api('/stats/token-economy', { method:'DELETE' }); toast('✓ 埋点已归零'); loadSys(); }
+  catch(e){ toast('归零失败','error'); }
+}
+
+async function rebuildEmbed(){
+  if (!confirm('确定全量重建向量？207 条约需 10s（走 API）或更快（本地）。')) return;
+  try {
+    const r = await api('/embed/rebuild', { method:'POST', body: JSON.stringify({}) });
+    toast(`✓ 重建完成：${r.backend||''} · ${r.count ?? ''} docs`);
+    loadSys();
+  } catch(e){ toast('重建失败: ' + e.message, 'error'); }
+}
+async function clearCache(){
+  if (!confirm('确定清空所有回答快照？')) return;
+  try { await api('/cache',{method:'DELETE'}); toast('✓ 缓存已清空'); loadSys(); }
+  catch(e){ toast('清空失败','error'); }
+}
+
+/* ─── 初始化 ── */
+(async function init(){
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('zh-CN');
+  await loadChatMeta();
+  refreshOptionFilters();
+  console.log('[Portal V5] Deep-Space Console ✅');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "_comment": "切片策略配置 · 可在 portal 页面切换，也可手动改此文件",
+  
+  "default": {
+    "name": "默认-段落优先",
+    "mode": "paragraph",
+    "chunk_size": 500,
+    "chunk_overlap": 50,
+    "min_chunk_len": 20,
+    "max_chunk_len": 2000,
+    "desc": "先按 \\n\\n 切，太大再按句号切。通用型，适合大部分中文文档"
+  },
+  
+  "sales-scripts": {
+    "name": "销售话术-短句",
+    "mode": "sentence",
+    "chunk_size": 300,
+    "chunk_overlap": 30,
+    "min_chunk_len": 15,
+    "max_chunk_len": 500,
+    "desc": "按句号/分号切。销售话术通常短而精炼，短句单独检索命中率高"
+  },
+  
+  "tender-docs": {
+    "name": "招投标-长文",
+    "mode": "paragraph",
+    "chunk_size": 1000,
+    "chunk_overlap": 100,
+    "min_chunk_len": 50,
+    "max_chunk_len": 3000,
+    "desc": "段落优先 + 更大块。招投标文档上下文重要，宁大勿碎"
+  }
+}

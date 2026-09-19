@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="8g8D0QCBcQ1UrtZT6ia6Aj">
+<head data-page-node-id="aJQx4KOFiVNNJ88Z8Nc1XZ">
+<meta charset="UTF-8" data-page-node-id="AAqtiJuVGVMU0iu8WFAEV1">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="it6L1R4nBsPDTIPgFp3PUd">
+<title>LTC RAG Bot · 工作台重设计 效果图</title>
+<style>
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.0.13/chinese-simplified-600.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5.0.18/chinese-simplified-500.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.20/400.css');
+
+:root{
+  --paper:#FAF8F4; --panel:#FFFFFF; --ink:#1C1917; --ink-2:#57534E; --ink-3:#A8A29E;
+  --gold:#A87C4F; --gold-deep:#8C6B3F; --gold-soft:#F3EBDF;
+  --line:#E8E2D8; --line-2:#DDD5C8;
+  --ok:#1D7A5F; --ok-soft:#E7F2ED;
+  --warn:#B7791F; --warn-soft:#F7EEDD;
+  --bad:#B3402E; --bad-soft:#F7E7E3;
+  --info:#2B5F9E; --info-soft:#E9F0F8;
+  --serif:'Noto Serif SC','Songti SC','STSong',serif;
+  --sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono','SF Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* ───────────── 布局骨架 ───────────── */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+.side{background:var(--panel);border-right:1px solid var(--line);padding:28px 0 20px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.main{padding:0 48px 64px;max-width:1220px}
+
+/* 侧栏 */
+.brand{padding:0 24px 24px;border-bottom:1px solid var(--line)}
+.brand .mark{width:34px;height:34px;border:1.5px solid var(--ink);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:17px;margin-bottom:14px;position:relative}
+.brand .mark::after{content:'';position:absolute;right:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--gold)}
+.brand h1{font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.5px}
+.brand .sub{font-size:11px;color:var(--ink-3);letter-spacing:2px;margin-top:2px}
+.nav{padding:16px 12px;flex:1}
+.nav .group{font-size:10.5px;color:var(--ink-3);letter-spacing:2px;padding:0 12px;margin:14px 0 6px}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;color:var(--ink-2);font-size:13.5px;cursor:pointer;text-decoration:none;border:1px solid transparent;transition:all .15s}
+.nav a svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav a:hover{background:var(--paper);color:var(--ink)}
+.nav a.on{background:var(--gold-soft);color:var(--gold-deep);font-weight:500;border-color:#E5D8C2}
+.side-foot{padding:16px 24px 0;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3)}
+.env-row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.warn{background:var(--warn)}
+
+/* 顶栏 */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:26px 0 20px;border-bottom:1px solid var(--line);margin-bottom:28px}
+.topbar .crumb{font-size:12px;color:var(--ink-3);letter-spacing:1px;margin-bottom:4px}
+.topbar h2{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:.5px}
+.topbar .actions{display:flex;gap:10px;align-items:center}
+.pill{font-size:11px;padding:4px 12px;border-radius:99px;border:1px solid var(--line-2);color:var(--ink-2);background:var(--panel);font-family:var(--mono)}
+
+/* 按钮 */
+.btn{background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:8px;padding:8px 18px;font-size:13px;font-family:var(--sans);cursor:pointer;transition:all .15s}
+.btn:hover{background:#33302C}
+.btn.ghost{background:transparent;color:var(--ink-2);border-color:var(--line-2)}
+.btn.ghost:hover{border-color:var(--ink-3);color:var(--ink)}
+.btn.gold{background:var(--gold-deep);border-color:var(--gold-deep)}
+.btn.gold:hover{background:var(--gold)}
+.btn.sm{padding:5px 12px;font-size:12px;border-radius:7px}
+
+/* 卡片 */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px}
+.card h3{font-family:var(--serif);font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.card .hint{font-size:12px;color:var(--ink-3);margin-bottom:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:14px}
+
+/* 指标 */
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px 16px}
+.metric .lb{font-size:11.5px;color:var(--ink-3);letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+.metric .num{font-family:var(--serif);font-size:34px;font-weight:600;line-height:1.15;margin-top:6px;letter-spacing:.5px}
+.metric .num small{font-size:14px;font-weight:400;color:var(--ink-3);font-family:var(--sans);margin-left:4px}
+.metric .foot{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.metric .trend{font-family:var(--mono);font-size:10.5px;color:var(--ok)}
+.gold-num{color:var(--gold-deep)}
+
+/* 状态行 */
+.sysline{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.sysitem{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2);background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:5px 13px}
+.sysitem b{font-family:var(--mono);font-weight:400;color:var(--ink);font-size:11.5px}
+
+/* 列表 */
+.row{display:flex;align-items:center;gap:14px;padding:13px 4px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .t{font-size:13.5px;color:var(--ink)}
+.row .meta{font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+.badge{font-size:10.5px;padding:2px 9px;border-radius:99px;font-family:var(--mono)}
+.b-ok{background:var(--ok-soft);color:var(--ok)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}
+.b-bad{background:var(--bad-soft);color:var(--bad)}
+.b-info{background:var(--info-soft);color:var(--info)}
+.b-gold{background:var(--gold-soft);color:var(--gold-deep)}
+
+/* 问答台 */
+.chat-wrap{display:grid;grid-template-columns:1fr 300px;gap:16px}
+.msg-user{display:flex;justify-content:flex-end;margin:18px 0 10px}
+.msg-user .b{background:var(--ink);color:#F5F1EA;border-radius:14px 14px 3px 14px;padding:10px 16px;font-size:13.5px;max-width:70%}
+.msg-ai{margin:6px 0}
+.msg-ai .who{font-size:11px;color:var(--ink-3);letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.msg-ai .who .lk{width:18px;height:18px;border:1.2px solid var(--gold);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:10px;color:var(--gold-deep)}
+.ans{background:var(--panel);border:1px solid var(--line);border-radius:4px 14px 14px 14px;padding:16px 18px;font-size:13.5px;line-height:1.8}
+.ans .hl{border-left:2px solid var(--gold);padding-left:12px;margin:10px 0;color:var(--ink-2);font-size:12.5px;background:var(--paper);border-radius:0 8px 8px 0;padding:8px 12px 8px 14px}
+.cites{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2)}
+.cite{font-size:11px;color:var(--ink-2);border:1px solid var(--line-2);border-radius:7px;padding:3px 10px;background:var(--paper)}
+.cite b{font-family:var(--mono);font-weight:400;color:var(--gold-deep)}
+.askbar{background:var(--panel);border:1px solid var(--line-2);border-radius:14px;padding:14px 16px;margin-top:18px;transition:border-color .2s}
+.askbar:focus-within{border-color:var(--gold)}
+.askbar textarea{width:100%;border:none;outline:none;resize:none;font-family:var(--sans);font-size:14px;background:transparent;color:var(--ink)}
+.askbar .bar-foot{display:flex;align-items:center;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+.chip{font-size:12px;color:var(--ink-2);border:1px solid var(--line-2);background:var(--panel);border-radius:99px;padding:5px 14px;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--gold);color:var(--gold-deep)}
+.switch{position:relative;width:32px;height:18px;background:var(--line-2);border-radius:99px;cursor:pointer}
+.switch::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s}
+.switch.on{background:var(--ok)}
+.switch.on::after{left:16px}
+
+/* 调试面板 */
+.scorebar{margin:10px 0}
+.scorebar .lb{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-2);margin-bottom:4px}
+.scorebar .lb b{font-family:var(--mono);font-weight:400}
+.track{height:6px;background:var(--paper);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.fill{height:100%;background:var(--gold);border-radius:99px}
+.fill.teal{background:var(--ok)}
+
+/* 上传区 */
+.drop{border:1.5px dashed var(--gold);background:var(--gold-soft);border-radius:14px;padding:34px;text-align:center;cursor:pointer;transition:all .2s}
+.drop:hover{background:#EEE3D2}
+.drop .big{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--gold-deep);margin:10px 0 4px}
+.drop .sm{font-size:12px;color:var(--ink-3)}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-size:10.5px;color:var(--ink-3);letter-spacing:1.5px;font-weight:500;padding:8px 10px;border-bottom:1px solid var(--line-2)}
+td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:hover td{background:#FDFBF7}
+.mono{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+.preview{color:var(--ink-3);font-size:12px;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 提示词编辑器 */
+.editor{background:#211E1A;color:#EDE6DA;border-radius:12px;padding:20px 22px;font-family:var(--mono);font-size:12.5px;line-height:2;letter-spacing:.2px}
+.editor .v{color:#D9A967}
+.editor .cm{color:#7A7268}
+.toolrow{display:flex;gap:10px;align-items:center;margin-top:14px}
+
+/* 视图切换 */
+.view{display:none}
+.view.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* 方案说明条 */
+.note{margin-top:36px;border-top:1px solid var(--line);padding-top:20px;font-size:12px;color:var(--ink-3);line-height:2}
+.note b{color:var(--ink-2)}
+@media (max-width:1080px){.app{grid-template-columns:64px 1fr}.side .brand h1,.side .brand .sub,.nav a span,.nav .group,.side-foot{display:none}.main{padding:0 20px 40px}.grid4,.grid2,.chat-wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body data-page-node-id="GTicV1uzmG50dHvdHPxLu5">
+<div class="app" data-page-node-id="67TM0NMO6ZAIyMMpBtQyzf">
+
+<!-- ═══════════ 侧栏 ═══════════ -->
+<aside class="side" data-page-node-id="BslH4pKAIDisuYAUZmD1zy">
+  <div class="brand" data-page-node-id="bcYXCsEIWYMsx6FJ5mtghg">
+    <div class="mark" data-page-node-id="bXDHFCHDm002lC4cOv1KZB">六</div>
+    <h1 data-page-node-id="95YnZTq48myDKPxeTEiky4">LTC RAG Bot</h1>
+    <div class="sub" data-page-node-id="I2LFAXdj58FhiySUW2v4Md">KNOWLEDGE CONSOLE</div>
+  </div>
+  <nav class="nav" data-page-node-id="juXrGjWdyOf1oBi5SNF80y">
+    <div class="group" data-page-node-id="FBMFFCBKkEiyXl4Q9K7bdF">总览</div>
+    <a class="on" data-v="dash" onclick="go('dash')" data-page-node-id="EblpqdTFXlU2gHYCFybvWA"><svg viewBox="0 0 24 24" data-page-node-id="3h5zYDZ66UXtTLHLlDu6yY"><rect x="3" y="3" width="7" height="9" rx="1.5" data-page-node-id="zwmoX58Qga3ywum5pZWJSf"/><rect x="14" y="3" width="7" height="5" rx="1.5" data-page-node-id="gGvKdwi13yTrKgfHHC0DqV"/><rect x="14" y="12" width="7" height="9" rx="1.5" data-page-node-id="jsPB9QcnoKgkgcAftDneDI"/><rect x="3" y="16" width="7" height="5" rx="1.5" data-page-node-id="Moj6W2VOVLhwHNthMSdFLr"/></svg><span data-page-node-id="nlDpw7FlkgOdTIFbfOGo3A">工作台总览</span></a>
+    <div class="group" data-page-node-id="eIpbXsS7vN6doieUlO9hcC">知识运营</div>
+    <a data-v="chat" onclick="go('chat')" data-page-node-id="i7CBB2wzjOGKyYz26zBD8F"><svg viewBox="0 0 24 24" data-page-node-id="VfaFmcJoNXtwBIaHRPjFQD"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" data-page-node-id="msYUoYKy6ymGE3s2FhaiW8"/></svg><span data-page-node-id="SZekX4m7ASEK1yKGDuI7d8">问答工作台</span></a>
+    <a data-v="kb" onclick="go('kb')" data-page-node-id="0oGqV6SsAe4oB534nXthVh"><svg viewBox="0 0 24 24" data-page-node-id="IVioOyYTkGC9OJ8YDNwoNN"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" data-page-node-id="aUwtyA7GIA0bZllGExLUj1"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" data-page-node-id="ZIlw1aXfPBztxRgi0uhCnz"/></svg><span data-page-node-id="EzhLZjQCJkHcUUQC6coPNU">知识库 · 入库</span></a>
+    <a data-v="chunks" onclick="go('chunks')" data-page-node-id="XgIslFvcWhfJKS9cso92ab"><svg viewBox="0 0 24 24" data-page-node-id="o4aASaPGKpEgbnxICuIMTG"><line x1="4" y1="7" x2="20" y2="7" data-page-node-id="HHZGYmMdGUxISucyfEaey5"/><line x1="4" y1="12" x2="16" y2="12" data-page-node-id="7s2bwoExfqHJPYn2bYHowC"/><line x1="4" y1="17" x2="18" y2="17" data-page-node-id="6pxpqgkktHxHwll18A8ew3"/></svg><span data-page-node-id="G78MEAot3XHciwN1naoFDo">切片管理</span></a>
+    <a data-v="prompt" onclick="go('prompt')" data-page-node-id="UnCDHZS2fdaHG0VtHvkdcB"><svg viewBox="0 0 24 24" data-page-node-id="icyfu7qoffZ4XEDWzoeOGS"><path d="M12 20h9" data-page-node-id="PplTUIDP30jfek4nHFObLG"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" data-page-node-id="1qH9kFq8tksDbZsczMMdcO"/></svg><span data-page-node-id="DbM8uYD9veUPvaQXdFFrzB">提示词工程</span></a>
+    <div class="group" data-page-node-id="v7dJ5RFMIhQOzmD7orBEjR">运维</div>
+    <a data-v="sys" onclick="go('sys')" data-page-node-id="JEEOyuSGRt2lAIQ7obXjx7"><svg viewBox="0 0 24 24" data-page-node-id="YqHsgqEkmjlfcUYcSkLIGG"><circle cx="12" cy="12" r="3" data-page-node-id="EAaGafOlQPmb2S0RM1TTie"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" data-page-node-id="wati3ofID0IUnYUxQQbHGG"/></svg><span data-page-node-id="00cMU8SYrMBGDabeaDwOxl">系统与缓存</span></a>
+  </nav>
+  <div class="side-foot" data-page-node-id="1n1eQF3gaTu0lQqCTalcRn">
+    <div class="env-row" data-page-node-id="qK8WtUuWNEXYBJEVGN1I1v"><span class="dot" data-page-node-id="1LObwHqfCAr3nMFYr00mEm"></span>生产环境 · 正常运行</div>
+    <div class="env-row" style="font-family:var(--mono);font-size:10px" data-page-node-id="UsxShIswLe4cQQlLziog50">v4.1 · ltc-rag-bot-021</div>
+  </div>
+</aside>
+
+<!-- ═══════════ 主区 ═══════════ -->
+<main class="main" data-page-node-id="0zQoHClUfCEjuKKY89Lpl8">
+
+<!-- ── 视图 1：总览 ── -->
+<section class="view on" id="v-dash" data-page-node-id="yV9iCeugGQVNzw5fQoBDRI">
+  <div class="topbar" data-page-node-id="BZgP9nIvOgBauKU8HAHgg6">
+    <div data-page-node-id="IxcOZApX6CKAt0N8zTGEyB">
+      <div class="crumb" data-page-node-id="TYnzuAEQACah32aaoK5MLU">OVERVIEW · 周五 9 月 18 日</div>
+      <h2 data-page-node-id="xspzcvV0NoAjPidZqomZ4C">工作台总览</h2>
+    </div>
+    <div class="actions" data-page-node-id="IFw1nFWOLmEHOdfUmb9F73">
+      <span class="pill" data-page-node-id="iojMtWhpmatcojG5NbCie6">PROD · CloudBase</span>
+      <button class="btn sm gold" onclick="go('chat')" data-page-node-id="q4C5HsB5p6HnU6bXBl0zFQ">发起问答</button>
+    </div>
+  </div>
+
+  <div class="grid4" data-page-node-id="sFtYTr9PKgbgDdTMckPIO1">
+    <div class="metric" data-page-node-id="CFcQx7I99dbWgtGKNCi3ZA">
+      <div class="lb" data-page-node-id="pFqV43hlYVAGDkYXwUPvw3"><span data-page-node-id="91tpxQUDTfDGlVIEcUJo4Q">知识切片</span><span class="trend" data-page-node-id="FD9VgGqAKi42JNMkGFBwuF">+3 今</span></div>
+      <div class="num" data-page-node-id="iwWH8hLCKkMCideliQ934R">207</div>
+      <div class="foot" data-page-node-id="vPRdAFvRKKaNQO9FIYW2hG">6 份文档 · 12.4 万字符</div>
+    </div>
+    <div class="metric" data-page-node-id="0Yq5cnZiAx5KvrclTeRPZL">
+      <div class="lb" data-page-node-id="kWGTgFDcesijg648gWtyCr"><span data-page-node-id="zorwU6mdsinsgRVjD0kLYA">检索引擎</span><span class="trend" data-page-node-id="7ctQVJoZCfF0PHhr1CmGzt">READY</span></div>
+      <div class="num gold-num" data-page-node-id="hbMckkRwUebHmyBYhg2038">1024<small data-page-node-id="PDZxC8D7EJXMcih4QnkDFR">维</small></div>
+      <div class="foot" data-page-node-id="8k8i7FADnRP55DeddjjpiT">bge-m3 + BM25 + RRF 融合</div>
+    </div>
+    <div class="metric" data-page-node-id="HIWCSfnqgbN5yBxI7ys1uS">
+      <div class="lb" data-page-node-id="Wov21Ly3LpY6cZcBdBqQZc"><span data-page-node-id="aGFKNteDqQ6bn2NqGxTcCT">缓存快照</span><span class="trend" data-page-node-id="oeoCR1z6lbwf6EZTCrovtG">1 HOT</span></div>
+      <div class="num" data-page-node-id="o4AGSEWrPLHZpy98ChXrnp">3</div>
+      <div class="foot" data-page-node-id="mI5qUV6jHSeHNNlrcDOdOk">2 条已随知识库更新失效</div>
+    </div>
+    <div class="metric" data-page-node-id="XZZc4C6gdrsrVkEPznfJR9">
+      <div class="lb" data-page-node-id="7KFikUEFLWVWbm2neFXHES"><span data-page-node-id="dp2wl5XsGW1BKN0oPJdVF4">生成模型</span><span class="trend" data-page-node-id="Br6zySyBTAJG3O5zYKjvM9">LIVE</span></div>
+      <div class="num" style="font-size:22px;padding-top:8px" data-page-node-id="1QVJ0MotbDehJgaViJRBzo">GLM-4-Flash</div>
+      <div class="foot" data-page-node-id="OGMKCUuhvd3xdBsh8FXwCa">平均响应 1.8s · 重排已启用</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px" data-page-node-id="VnwWDCSMgT1nvlbhh6hs64">
+    <h3 data-page-node-id="geuh0BwH89NhgrRM6u7WYZ">系统链路</h3>
+    <div class="hint" data-page-node-id="R7Foao5qxtKCIBVlARAr7n"> ingestion → 切片 → 向量化 → 检索融合 → 重排 → 生成 </div>
+    <div class="sysline" style="margin-top:4px" data-page-node-id="O2lvgoiE6cH1dsmShZB4CD">
+      <span class="sysitem" data-page-node-id="B0gha40gOyLhpkCk4GB2Nc"><span class="dot" data-page-node-id="KuCxHx8JjERLRAGC4RZ93E"></span>COS 挂载 <b data-page-node-id="Nu4peC8PJ51HMjEdpxB9He">/mnt/chroma</b></span>
+      <span class="sysitem" data-page-node-id="GLZxFi8muPMY3ocyfRCnEB"><span class="dot" data-page-node-id="JIITfKbQH8Ki1DKAxE0dUj"></span>Embedding <b data-page-node-id="8HDEgl9jFsCZfpymUd9REY">BAAI/bge-m3</b></span>
+      <span class="sysitem" data-page-node-id="d5vhNeLtDmuAEiHZK5HUP5"><span class="dot" data-page-node-id="oqMrhz86Hb4TxC6SaZCDn1"></span>LLM <b data-page-node-id="NLXLZF4faCmSwF7gJ36rOG">zhipu:glm-4-flash</b></span>
+      <span class="sysitem" data-page-node-id="3MBDxD6QueAwApgb2bAiy7"><span class="dot" data-page-node-id="IbhRb4LLjS29N0UECx3AIw"></span>API 鉴权 <b data-page-node-id="WBExyESmQiN6LFr8Nys0Bp">已开启</b></span>
+      <span class="sysitem" data-page-node-id="iBzmAAysyJ8cYee74LxFOX"><span class="dot warn" data-page-node-id="wSaUS5W65fe1s0HpEwSjWY"></span>缓存失效 <b data-page-node-id="w3TZiKow9Dswc3DspaW682">2 条待清理</b></span>
+    </div>
+  </div>
+
+  <div class="grid2" data-page-node-id="fwHWKV0YLM7Xfk5uUmOyPS">
+    <div class="card" data-page-node-id="JuKzeu10EfEWgyTGr2nqYO">
+      <h3 data-page-node-id="iaiXm8BDhHzUQF3EGVf0TS">最近问答</h3>
+      <div class="hint" data-page-node-id="nntArjkW3V82IGbBB0wAUe">含引用溯源与耗时，点击可回看完整检索过程</div>
+      <div class="row" data-page-node-id="wpJvcA6ASlUWdHy2NwJaLw"><div style="flex:1" data-page-node-id="Ze9KkVrlqBAQLV4e0Iyimr"><div class="t" data-page-node-id="FdX1XqtM9HGPEdvg6PYUHL">RAG 检索增强是怎么工作的？</div><div class="meta" data-page-node-id="u9Rli5SlkMMyaD5v9CgYWo">3 引用 · 1.6s · glm-4-flash</div></div><span class="badge b-gold" data-page-node-id="3foD0zperB3hA0gsU2BjUl">缓存命中</span></div>
+      <div class="row" data-page-node-id="1gnsUZwVt5jtv2ltuOIMaw"><div style="flex:1" data-page-node-id="jsih52kOJQdnevyJBaTfL4"><div class="t" data-page-node-id="A2gKejoogJNECYoX8g6Wsc">产品部署的核心 FABE 流程是什么？</div><div class="meta" data-page-node-id="LfEg5fpCwd8PjhfHgFzKtU">4 引用 · 2.3s · glm-4-flash</div></div><span class="badge b-info" data-page-node-id="ehRvHyYC6BBT9SedtTRhDl">实时生成</span></div>
+      <div class="row" data-page-node-id="sMRFYoE2t0xw8MSfLZnxVv"><div style="flex:1" data-page-node-id="QrztmaDJkfI05CC5ZGzwAF"><div class="t" data-page-node-id="tKtclOvGzPRByp365eqQgL">交付文档 7 件套分别是什么？</div><div class="meta" data-page-node-id="BrwHTencM86XaAgUIVRaek">5 引用 · 1.9s · glm-4-flash</div></div><span class="badge b-info" data-page-node-id="d69MmKR9GzY6tm584tttlr">实时生成</span></div>
+      <div class="row" data-page-node-id="QpLWIze68KhrVNDuAYu2iF"><div style="flex:1" data-page-node-id="NcQ2at0fALZtqjjHz3T0kU"><div class="t" data-page-node-id="uFxsAf37vURlQlabVC5YMx">POC 试用周期一般多长？</div><div class="meta" data-page-node-id="bUGN1N0oEewe7UElKFUHWU">2 引用 · 1.4s · glm-4-flash</div></div><span class="badge b-gold" data-page-node-id="JbXZiBFmtx3fUXJpoppaCX">缓存命中</span></div>
+    </div>
+    <div class="card" data-page-node-id="7PxasRfPujFeaxi0i93HLH">
+      <h3 data-page-node-id="YtuHH51AYU0mmgfCkn1hYg">待办提醒</h3>
+      <div class="hint" data-page-node-id="b69MwI3h8o8qIACHzjEOaW">由系统状态自动生成</div>
+      <div class="row" data-page-node-id="X8OF0CM4f8AWVr6vpKBcaS"><span class="badge b-warn" data-page-node-id="H1qvA6AcB2Eg081RQWWBG9">建议</span><div style="flex:1" data-page-node-id="ks4NicPHIS9lbf20iaAW70"><div class="t" data-page-node-id="tcLoSgAnxWjK6Ye1JGLXCH">2 条缓存快照已失效</div><div class="meta" data-page-node-id="etsomo6T89JZNRZD0zlXO4">知识库指纹已变更</div></div><button class="btn sm ghost" data-page-node-id="WsynLThcZEDabwYtMjzXl5">清理</button></div>
+      <div class="row" data-page-node-id="81R7ePtYPCXJYDL09HyQON"><span class="badge b-gold" data-page-node-id="YWuE1z2b7KKSGzbmeD9cMn">建议</span><div style="flex:1" data-page-node-id="97cJAvvXGCpouQlOizvO19"><div class="t" data-page-node-id="B4o95ODGIkhcjYeG7gkKEZ">拒答阈值未配置</div><div class="meta" data-page-node-id="NbQN10pQ4SSlhMsWzdan94">KB 外问题可能被自由发挥</div></div><button class="btn sm ghost" data-page-node-id="xcEmU2HbVKX1CDMyipkUAY">去处理</button></div>
+      <div class="row" data-page-node-id="4o5PHsuwo9xQITrmCPAxCw"><span class="badge b-ok" data-page-node-id="PHApRIlInM9jhAs3a4X6Jz">正常</span><div style="flex:1" data-page-node-id="EBDUnSv2rzFHCIqA4xM6Tt"><div class="t" data-page-node-id="kuHFDziiBupvT8o32pDI7v">向量库与文档一致</div><div class="meta" data-page-node-id="YjFOBj8N25VDpORvap7SWW">指纹 a3f8…c21d</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 视图 2：问答工作台 ── -->
+<section class="view" id="v-chat" data-page-node-id="WWqKpzx024kQ90wWRmfCR0">
+  <div class="topbar" data-page-node-id="KbDqflMBZTNvPXAeBBLJb3">
+    <div data-page-node-id="7Nh7tHFD20Cz7zbw2WKqXX">
+      <div class="crumb" data-page-node-id="IqYKBFWv1hxaEpVjPw6KWy">ASK · 检索增强问答</div>
+      <h2 data-page-node-id="F1eUZYO1mBmZey4lpdV8rt">问答工作台</h2>
+    </div>
+    <div class="actions" data-page-node-id="PUXVIsrQzMiYhLUDSj7Yr2">
+      <span class="pill" data-page-node-id="7aPq7MMLjqtmEBJSSXrUkp">207 切片在库</span>
+      <button class="btn sm ghost" data-page-node-id="k7pFy7kHj3ezYIdsEGsNIO">导出本轮</button>
+    </div>
+  </div>
+
+  <div class="chat-wrap" data-page-node-id="4siyTvRQnRFQZP3nDnw9Kg">
+    <div data-page-node-id="aukTT31fqjOrGWYcQRH4pq">
+      <div class="msg-user" data-page-node-id="3aozlRTeIrAOTqk2T3ZnUZ"><div class="b" data-page-node-id="ojvJBWNccur4XknKRBlzwM">RAG 检索增强是怎么工作的？和我们直接问大模型有什么区别？</div></div>
+      <div class="msg-ai" data-page-node-id="UvJEFbX2HDWpErjNTUOC2E">
+        <div class="who" data-page-node-id="xV4OPhRNGqzH9RKZuzZ4VB"><span class="lk" data-page-node-id="2C0xSO6f6DCPqtL4J6WJmj">六</span>基于知识库回答 · 1.6s · <span class="badge b-gold" style="margin-left:4px" data-page-node-id="StQLKDDSvnq6sUaqDQsG8e">缓存命中</span></div>
+        <div class="ans" data-page-node-id="EblBFOSE0OwT0BrohnyNzH">
+          RAG（Retrieval-Augmented Generation，检索增强生成）的工作方式是<b data-page-node-id="oojE4GR8fC5PpDIb5pWskt">「先查资料，再回答」</b>：
+          <div class="hl" data-page-node-id="wHpSq47isSLK8a1ylM8RCw">你的问题先被向量化，在 207 条知识切片中融合检索（语义向量 + BM25 关键词 + RRF 重排），命中的原文片段作为上下文交给大模型，模型只依据这些资料作答并标注引用。</div>
+          与直接问大模型的区别：直接问全靠模型参数里的通用记忆，容易过时、无法引用你的私有文档；RAG 的回答<b data-page-node-id="faJ5aQOSO6tiHA8MlKMPLy">可溯源、可更新、可控</b>——知识更新只需入库新文档，无需重新训练模型。
+          <div class="cites" data-page-node-id="JNqDjMhOd60LZhwyFcIYAf">
+            <span class="cite" data-page-node-id="5KAsIjw7QpFkW4gqukELkD"><b data-page-node-id="QV4FsJbUYihAW5eWtVb5u3">0.92</b> FDE知识包.md · 切片 #041</span>
+            <span class="cite" data-page-node-id="ZEKrHKrXfPkrL950nIMcov"><b data-page-node-id="bkB72fzD4ewMi39ZRVApCQ">0.87</b> 零成本30天FDE案例.md · 切片 #117</span>
+            <span class="cite" data-page-node-id="SU3wW0VCJYbcQzkKymKZgc"><b data-page-node-id="icpv4GbqP5FybY3s9hD5k7">0.81</b> 项目汇总.md · 切片 #008</span>
+          </div>
+        </div>
+      </div>
+      <div class="msg-user" data-page-node-id="kQoSCAGIxahq67e4JqmQMp"><div class="b" data-page-node-id="eExKufdV7WIy2y4xNLbmyc">没有显卡能不能跑大模型？</div></div>
+      <div class="msg-ai" data-page-node-id="7FcBGEX2zKYEHxPCFYuDXL">
+        <div class="who" data-page-node-id="JmTbCpSqvzce36vy9UHKgh"><span class="lk" data-page-node-id="H6zFwmiVDWTPWEBIQ5OR8w">六</span>基于知识库回答 · 1.2s</div>
+        <div class="ans" style="border-color:var(--warn)" data-page-node-id="2BMRvXwtASufqPWeqsGAkB">
+          当前知识库中没有关于「显卡 / 硬件部署」的内容，我无法基于资料回答这个问题。
+          <div class="cites" data-page-node-id="2Fo0YtcgsHfxMTXAHJ31Sb"><span class="cite" style="color:var(--warn);border-color:var(--warn)" data-page-node-id="pA431y3PK3XdGDA8IgS7Jj">知识库未覆盖 · 已拒答（拒答阈值生效）</span></div>
+        </div>
+      </div>
+
+      <div class="askbar" data-page-node-id="ZWSl2FWHgzfjVg5QkJVege">
+        <textarea rows="2" placeholder="向知识库提问，例如：核心 FABE 是什么？"></textarea>
+        <div class="bar-foot" data-page-node-id="9EPFqdneQsfdpRVI3Jjg4R">
+          <span style="font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:6px" data-page-node-id="OV4G4sIwccCANRK0FZxnpK">引用重排</span><span class="switch on" data-page-node-id="jORvuvYpBP2mDE1RQayNlt"></span>
+          <span style="font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:6px;margin-left:8px" data-page-node-id="r8xJ977gMiS6HX4qOkyeu0">Top-K</span>
+          <span class="pill" style="cursor:pointer" data-page-node-id="VqOvkl744dKMvke245mz5v">5</span>
+          <span style="flex:1" data-page-node-id="SrYXrBcnTS2boFOJ5P73Dy"></span>
+          <span class="mono" style="font-size:10.5px" data-page-node-id="btudalS9z5G8q0AoRApC0W">⏎ 发送</span>
+          <button class="btn sm gold" data-page-node-id="BhzH5vAJ1WgqKgBPN173aD">提问</button>
+        </div>
+      </div>
+      <div class="chips" data-page-node-id="wsPaVNySoIlpYMEvVrXtxN">
+        <span class="chip" data-page-node-id="ApnKKlM9ghKfhIr1cglZft">核心 FABE 是什么？</span>
+        <span class="chip" data-page-node-id="meuq6PYLqZmTnpAbUR1aCA">POC 试用周期多长？</span>
+        <span class="chip" data-page-node-id="B1yYDZ1sE2EDerqC3iatrO">交付文档 7 件套？</span>
+        <span class="chip" data-page-node-id="qTHrZBX602f4ywa7E1lF6L">私有化部署怎么选型？</span>
+      </div>
+    </div>
+
+    <div data-page-node-id="c9S08zlvO48wQk3j9mKXig">
+      <div class="card" style="margin-bottom:14px" data-page-node-id="3N1WItUAs9Pg8cbQPM4G8g">
+        <h3 data-page-node-id="Ne38Sd0e4R7FBlhU2txGWR">检索调试</h3>
+        <div class="hint" data-page-node-id="urN9FL307NgcqbJfFqLZM4">最近一次提问的三路召回得分</div>
+        <div style="font-size:11px;color:var(--ink-3);letter-spacing:1px;margin:12px 0 2px" data-page-node-id="IQSmravez0orD1cdY7T43z">向量召回 · bge-m3</div>
+        <div class="scorebar" data-page-node-id="q7t4TSLBCjwX4cXaEtrwIA"><div class="lb" data-page-node-id="leaRDAr4kbhdBSPlPjbxWQ"><span data-page-node-id="vUjQqaYJpnATdYXEHtGBGz">#041 FDE知识包</span><b data-page-node-id="A8bi1E8jqJ10g86uBYoRPp">0.92</b></div><div class="track" data-page-node-id="HmpQlx0oSZvBT2y2amfTiH"><div class="fill" style="width:92%" data-page-node-id="hP40HoxzyfFTIyQoepUjvM"></div></div></div>
+        <div class="scorebar" data-page-node-id="bEIWBrCNIPj4QG8JNTKjq8"><div class="lb" data-page-node-id="bJUCpJGVV1jGrGdmJL8mwb"><span data-page-node-id="9m0KKxNXcjmEbEVqT7Hlcq">#117 FDE案例</span><b data-page-node-id="JYMhTYgqUOnNvnsEBxj2pV">0.87</b></div><div class="track" data-page-node-id="y5fu5pI7Mw1hl0NPdmHazX"><div class="fill" style="width:87%" data-page-node-id="5H0hjQULBmoNyIDEZEDidT"></div></div></div>
+        <div class="scorebar" data-page-node-id="TfmJu9b7EVZ5DekTsO4p0p"><div class="lb" data-page-node-id="onVGO9MwsGGr3SvBDcCJHL"><span data-page-node-id="SelGkv3fTeqIEa5aDNbyWk">#008 项目汇总</span><b data-page-node-id="WzuI5JNYh0IGVvSv5ZGCSz">0.81</b></div><div class="track" data-page-node-id="WDLU7nYbuPaz4642Bfg4Na"><div class="fill" style="width:81%" data-page-node-id="KshiEW1UjNDedeSC3iJA3C"></div></div></div>
+        <div style="font-size:11px;color:var(--ink-3);letter-spacing:1px;margin:14px 0 2px" data-page-node-id="ynBR2OWf7R4RoSd6NIsCw6">BM25 关键词</div>
+        <div class="scorebar" data-page-node-id="NvM95eJnHyUQdEdWU69uw3"><div class="lb" data-page-node-id="it7DfWE6DAbuoMuou5cXvw"><span data-page-node-id="vxTVF5feHFTBsflLPb9iva">#041 FDE知识包</span><b data-page-node-id="TwdVzL6jgzm2PntPB1mbxs">0.74</b></div><div class="track" data-page-node-id="HgLkC6ezEHimv7qemiEBk1"><div class="fill teal" style="width:74%" data-page-node-id="C40wIMo0t60llaEwBa8zLI"></div></div></div>
+        <div class="scorebar" data-page-node-id="GmKBrBFafMVjy8jyNefExc"><div class="lb" data-page-node-id="ruW2p7IRvGglPFUEaUcDoJ"><span data-page-node-id="A8Q0brFvEX71Tp9afaHdUQ">#008 项目汇总</span><b data-page-node-id="tLGPejcYF2XsIwmRTU2SJR">0.63</b></div><div class="track" data-page-node-id="GBkor2rLepYxffpBg2N2KI"><div class="fill teal" style="width:63%" data-page-node-id="Xf90fNIh8sZPCXtRqBWeFT"></div></div></div>
+        <div style="font-size:11px;color:var(--ink-3);letter-spacing:1px;margin:14px 0 2px" data-page-node-id="nOnG3A894Y1ij8f7oOiG8s">RRF 融合后</div>
+        <div class="scorebar" data-page-node-id="GuEo6bdZOl1DIK1k8xyMzW"><div class="lb" data-page-node-id="ReQ5BilPhOGNPUGpbtBfid"><span data-page-node-id="tqN0rYONkrFgxbsmFYu8nu">#041 → 最终</span><b data-page-node-id="fiStBArQeuRDkAmHBvO1YI">0.96</b></div><div class="track" data-page-node-id="gQ9gYsrYpitLLDWNBShjIa"><div class="fill" style="width:96%;background:var(--gold-deep)" data-page-node-id="sgoyfgsZPCfqAEkTcItMhM"></div></div></div>
+      </div>
+      <div class="card" data-page-node-id="dtGyXR3z7GQFhgCjT5pFDX">
+        <h3 data-page-node-id="G5pYlyds1voMKCYq9s15gH">本轮参数</h3>
+        <div class="hint" data-page-node-id="SCkpIXhC35LGKT7ssJBOPr">实时生效，随请求发送</div>
+        <div class="row" data-page-node-id="aHWxPOAcl5YFSpDwFi1esn"><span class="t" style="font-size:12.5px" data-page-node-id="u42Jc6LZYhqk6IH9AzpILb">重排 rerank</span><span class="badge b-ok" data-page-node-id="QWP92VmPaIVApqwsSfnFI1">ON</span></div>
+        <div class="row" data-page-node-id="Ep7D3tb2DePtHeJyncAcMZ"><span class="t" style="font-size:12.5px" data-page-node-id="O4eldIknitILXIsp6agYLG">生成模型</span><span class="mono" data-page-node-id="RiJAVSbEhap7zA39dwsRyF">glm-4-flash</span></div>
+        <div class="row" data-page-node-id="mw82Np7N4rQSrYMphMAebX"><span class="t" style="font-size:12.5px" data-page-node-id="kSzCCzTVEw70Z8pD0C4WIK">Embedding</span><span class="mono" data-page-node-id="mHl4RGTP6XuQStN4rYCPSE">bge-m3·1024</span></div>
+        <div class="row" data-page-node-id="zkugqctCUNNprEMzFEVQqJ"><span class="t" style="font-size:12.5px" data-page-node-id="mmDfONTIHPWRdrAladlYyZ">拒答阈值</span><span class="badge b-warn" data-page-node-id="t1WL1eQaemgtFeP03DuvAW">未设</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 视图 3：知识库 · 入库 ── -->
+<section class="view" id="v-kb" data-page-node-id="GJSxRm9EplpnDAJhzT270Z">
+  <div class="topbar" data-page-node-id="PEylLQgRRKaTzoXDWOZW6k">
+    <div data-page-node-id="QNDnzMQnpegDnkosKD9wGn">
+      <div class="crumb" data-page-node-id="pEogIXymgDHmzJAMjFoNCy">LIBRARY · 文档与入库</div>
+      <h2 data-page-node-id="gcLXAW5NSwEoRbWFfDZc7Z">知识库</h2>
+    </div>
+    <div class="actions" data-page-node-id="gYb1gB4EahggKm82u0Rc3A"><span class="pill" data-page-node-id="R8Ao4YAESXNMngwBEXB2Ih">6 文件 · 207 切片</span><button class="btn sm ghost" onclick="go('chunks')" data-page-node-id="ETC4U9SKwDLgYQZ0Ac74We">管理切片</button></div>
+  </div>
+
+  <div class="drop" data-page-node-id="Sxv663tzI9KY5kakJnEd2C">
+    <svg viewBox="0 0 24 24" style="width:30px;height:30px;stroke:var(--gold-deep);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" data-page-node-id="NH8TXhGZcEYr4evLwR1DZZ"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" data-page-node-id="uFG3bMfNi5HLNNzQTAZEII"/><polyline points="17 8 12 3 7 8" data-page-node-id="Mr4A0qPk12w2Em8pf68CVC"/><line x1="12" y1="3" x2="12" y2="15" data-page-node-id="9AXoOKvNcp9ZapFIyDYeuH"/></svg>
+    <div class="big" data-page-node-id="OxXQJOaQ60a5KTNZ3848Gr">拖入文档，或点击选择文件</div>
+    <div class="sm" data-page-node-id="Ov85zg4OFiEBGrXMEZcnGa">支持 .md / .txt / .pdf · 单文件 ≤ 5MB · 入库后自动切片并向量化（约 3s / 100 片）</div>
+  </div>
+
+  <div class="card" style="margin-top:14px" data-page-node-id="6E8ZCPwJUvdqh3WT8sBMyA">
+    <h3 data-page-node-id="fe7WBFfeY78tnuG0Hcn1sm">直接粘贴入库</h3>
+    <div class="hint" data-page-node-id="Ri7skYIwIUrwi0ANw0jULB">适合片段化知识（会议纪要、话术、FAQ）</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px" data-page-node-id="AOnfMgS1PaBIhQCrfCEQhD">
+      <input type="text" placeholder="来源标题（如：客户答疑 0918）" style="flex:1;border:1px solid var(--line-2);border-radius:8px;padding:9px 12px;font-family:var(--sans);font-size:13px;background:var(--paper);outline:none" data-page-node-id="98uuRs2tKCLECBVLsPalrh">
+      <select style="border:1px solid var(--line-2);border-radius:8px;padding:9px 12px;font-family:var(--sans);font-size:13px;background:var(--paper);color:var(--ink-2)" data-page-node-id="LNlAsqtGWYRmyhc6XvxaWy"><option data-page-node-id="5zk6P8Tt3WZ12SvD4RYGqD">标准切片 · 500 字 / 重叠 80</option><option data-page-node-id="FT03qwIkSEDDtXPS8P8SUV">长文切片 · 900 字</option><option data-page-node-id="kz8JsDH90guKt4oQ81Aypg">短句切片 · 200 字</option></select>
+    </div>
+    <textarea rows="3" placeholder="粘贴文本内容…" style="width:100%;border:1px solid var(--line-2);border-radius:8px;padding:12px;font-family:var(--sans);font-size:13px;background:var(--paper);outline:none;resize:vertical"></textarea>
+    <div class="toolrow" data-page-node-id="ErzKEXnKgQldC5m6eEQIBF"><span style="flex:1" data-page-node-id="dwwEc34C7zi7hM39GKmk4l"></span><button class="btn ghost sm" data-page-node-id="ekb2vGD1DFfnY476D7eJwP">预览切片</button><button class="btn sm gold" data-page-node-id="fbmkE1zibn2LBwon9OolCd">入库</button></div>
+  </div>
+
+  <div class="card" style="margin-top:14px" data-page-node-id="D09yyCRIwhhDenP8H05s1Z">
+    <h3 data-page-node-id="AYLiEjoZXSNQczyglErDbz">文档资产</h3>
+    <div class="hint" data-page-node-id="RNtx5llorfmYUMFGr5ndnI">按类型分组 · 数据实时来自 /kb</div>
+    <table data-page-node-id="PUouBt4cHbzgCm92oUMdY6">
+      <tr data-page-node-id="iwXMPTzuYJPQR8mwHbnDPk"><th data-page-node-id="0hBvyA2NiIqVo4V0zhizp0">文档</th><th data-page-node-id="i2B7qNdYvmXoZBYxOkk7KE">类型</th><th data-page-node-id="lfPC0jMBPYddFzjrs2Cepk">切片</th><th data-page-node-id="s1hKA1R6DcwFLmj5vR6oed">字符</th><th data-page-node-id="uCE7gUU9qgCACg58CMhCUw">入库时间</th><th data-page-node-id="YykUKmQziomc6MylE5SFz4"></th></tr>
+      <tr data-page-node-id="Ej9OSTtTkk2SBEkTMgAuhH"><td class="t" data-page-node-id="fvjXBiSlMOozHoUj74iMHE">FDE知识包.md</td><td data-page-node-id="HpT7GjH3AFSF2bST92RYAR"><span class="badge b-gold" data-page-node-id="xLk6AqNBWQoJ2t6rwjaH0b">MD</span></td><td class="mono" data-page-node-id="1EgOBQgnjPGUjnJmFrFKAv">120</td><td class="mono" data-page-node-id="CO7gEJGdaHwyuQWiwzLxWv">58,204</td><td class="mono" data-page-node-id="Wd7161d6GdGbSqbLIhhrJP">09-18 13:57</td><td data-page-node-id="8jyyDBhGekN0A7AJkprIhV"><button class="btn sm ghost" data-page-node-id="iAzboc6hRZH7dY3fC54ySH">详情</button></td></tr>
+      <tr data-page-node-id="35U3bs9C9yh9ekqfEv0Tm1"><td class="t" data-page-node-id="flnHFQP06REc6f8KSOsUZF">零成本30天FDE案例.md</td><td data-page-node-id="8Kilqfg5BSKH6LtTh30FDy"><span class="badge b-gold" data-page-node-id="UleXqFTmyvHC6Q4hUPLGwD">MD</span></td><td class="mono" data-page-node-id="PDcI3p3kCwkVs2JnuX8Phi">52</td><td class="mono" data-page-node-id="xNsDEuqfFynGDuQfH8bD2C">31,880</td><td class="mono" data-page-node-id="avCVKxMPRzNsLQCfchnxXW">09-18 13:57</td><td data-page-node-id="Yi3frqVoCGFDQmMfKJcJCA"><button class="btn sm ghost" data-page-node-id="3OkZ6lTgGgMyTWBoXDjQxD">详情</button></td></tr>
+      <tr data-page-node-id="a1m3NloaIOjLJIqOCcaKGn"><td class="t" data-page-node-id="tWL6gw2OCYRXJ1J8WjvWrX">项目汇总.md</td><td data-page-node-id="9n2hkDDRCrOJReu57miP04"><span class="badge b-gold" data-page-node-id="9N8BlE8IjAP5wgJiROz70q">MD</span></td><td class="mono" data-page-node-id="pvYU4MqjEscghOAV1zgRHj">28</td><td class="mono" data-page-node-id="w96Mr1tWEQQyDMeUmRXn54">15,932</td><td class="mono" data-page-node-id="7AJajzPaPQ4EGJ3Pn93T8A">09-18 13:57</td><td data-page-node-id="EcCJLasdF5ijBSDCEcgy1W"><button class="btn sm ghost" data-page-node-id="Vv2oDFY7o9r9UfA5eVRvRO">详情</button></td></tr>
+      <tr data-page-node-id="b8RPuomttHIlaH141E8xkK"><td class="t" data-page-node-id="KRCGBPYepMHMRADtWpJAP5">部署与运维手册.md</td><td data-page-node-id="cqquDOy9UWhNVgm1TpSUJU"><span class="badge b-gold" data-page-node-id="rKzFCmCtG0fDqpaIknvaoO">MD</span></td><td class="mono" data-page-node-id="hYjV9HbTnvxgFChqVoedBZ">3</td><td class="mono" data-page-node-id="GATxInG8DarSNpZSFcplQH">2,410</td><td class="mono" data-page-node-id="2zVWNptnDpeNb9DWpRf2Qa">09-18 13:57</td><td data-page-node-id="Bapw2RuJfGgEyKrJcLtHoO"><button class="btn sm ghost" data-page-node-id="4csTELQpatHSHTK4eheQUB">详情</button></td></tr>
+      <tr data-page-node-id="GuuMjaeHFRO4ZizxTxlUvy"><td class="t" data-page-node-id="vv7W3ZifcmceKjiLP6IVae">销售话术.txt</td><td data-page-node-id="LpyjdMXIWGa6ZBiaSbKbfe"><span class="badge b-info" data-page-node-id="jT4jVcp5pnrOFeSF5HI0s2">TXT</span></td><td class="mono" data-page-node-id="W35ShO0qdmVlM8QjM7klWz">1</td><td class="mono" data-page-node-id="joM8qT7ltyLqD12fZMdWJs">612</td><td class="mono" data-page-node-id="7IsCzDxbkkPv1DGD3S9DEF">09-18 13:57</td><td data-page-node-id="BuDXDhwyy7C3yRDVD3YcgQ"><button class="btn sm ghost" data-page-node-id="Xul2XRF35h9nSDRdLxlLFu">详情</button></td></tr>
+      <tr data-page-node-id="xHQAJkqlEoUJ8D676w4ycB"><td class="t" data-page-node-id="wA6s1pg6vAmUxYZ0qgJDpr">（内联片段 ×3）</td><td data-page-node-id="2GcMSoOkM9YrHHlAuwEoQM"><span class="badge b-warn" data-page-node-id="mLsSnXIe5ylL7JGHnAn6Vq">INLINE</span></td><td class="mono" data-page-node-id="fHZwqjAz9oohNEBqBftLOU">3</td><td class="mono" data-page-node-id="XeLTA4aC46tBD01uCsP5GG">1,105</td><td class="mono" data-page-node-id="seyzXYgIJREHL1Iz8V5atb">09-17 21:04</td><td data-page-node-id="qjfqCpMEIAyGk53gbxwiqO"><button class="btn sm ghost" data-page-node-id="kui5JmrAnVhJMWMz2aFAGY">详情</button></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ── 视图 4：切片管理 ── -->
+<section class="view" id="v-chunks" data-page-node-id="wF5pMu3fHvVkBeAxJ9xzJF">
+  <div class="topbar" data-page-node-id="BQzvpPIDY4F9VPUL0raowv">
+    <div data-page-node-id="3ubuGG5glzfda10TZzmXaI">
+      <div class="crumb" data-page-node-id="ZFS9iYc8HYjYgJ1ERKsVu0">CHUNKS · 207 条 · 第 1 / 21 页</div>
+      <h2 data-page-node-id="AV8vn67OVAwzmoDPG8SDXa">切片管理</h2>
+    </div>
+    <div class="actions" data-page-node-id="B90t7mzTaNCnrCw6FIm5fw">
+      <button class="btn sm ghost" data-page-node-id="DhsUvxmN7Te2f11AUsD62U">重建向量</button>
+      <button class="btn sm ghost" style="color:var(--bad);border-color:var(--bad)" data-page-node-id="4cp3z5cuRgbZ7vN0qt645a">删除选中</button>
+    </div>
+  </div>
+
+  <div class="card" data-page-node-id="sNHNqdpQUftW6BXdeDjHGS">
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap" data-page-node-id="zlA2wtVonYI6vTuMhn7usf">
+      <input type="text" placeholder="搜索切片内容…" style="flex:1;min-width:200px;border:1px solid var(--line-2);border-radius:8px;padding:8px 12px;font-family:var(--sans);font-size:13px;background:var(--paper);outline:none" data-page-node-id="rlH8HOPZDTxHdZlF1ZVtXy">
+      <select style="border:1px solid var(--line-2);border-radius:8px;padding:8px 12px;font-size:12.5px;background:var(--paper);color:var(--ink-2)" data-page-node-id="0L3uR8q7YNfiw8pmW6PAAq"><option data-page-node-id="Xt2wPWDFORQ8R8I0BpmrD9">全部来源</option><option data-page-node-id="5Iq21n2pNecUbJhjUEM0h2">FDE知识包.md</option><option data-page-node-id="bbbi3kuE2yjRK7ooY57Y2c">零成本30天FDE案例.md</option></select>
+      <select style="border:1px solid var(--line-2);border-radius:8px;padding:8px 12px;font-size:12.5px;background:var(--paper);color:var(--ink-2)" data-page-node-id="926SOGeGcIPJAQ4CIoggT8"><option data-page-node-id="mREBnaMOXkIeAhlvHLAKbP">全部策略</option><option data-page-node-id="AyDmor3hUCl4LQqZ1KChML">标准切片</option><option data-page-node-id="nuM6XEriUYCmiN1sQBzmnf">长文切片</option></select>
+    </div>
+    <table data-page-node-id="p0oGvMkP1CF9fSs6Tjd9j2">
+      <tr data-page-node-id="vDxonVpTfc6vlMYGB84UtW"><th style="width:30px" data-page-node-id="JIitte4qEiKRVJ4DGMaifd"><input type="checkbox" style="accent-color:var(--gold-deep)" data-page-node-id="1PFpRCZiJd0tx6Jd9RLruC"></th><th data-page-node-id="npmoPLiK8MFzym5VjAlGQA">ID</th><th data-page-node-id="tlBwnbDif4WzHDuSoSlN1D">内容预览</th><th data-page-node-id="NjNAT9D8pvYIF9ipn9yB9m">来源</th><th data-page-node-id="brxCrFEZs5sVpSky5k9qjF">策略</th><th data-page-node-id="HY1AOKBGFjHlSkHEVY5EB1">长度</th><th data-page-node-id="VZRCZgVWp6VTkby7N9vmTu">更新</th><th data-page-node-id="xzBCIDJaSSQNyFqV85rJHZ"></th></tr>
+      <tr data-page-node-id="9ntH3RF7vNxDNXmo3TyGzP"><td data-page-node-id="fvY1AegJhA9WaqzHB3EBjm"><input type="checkbox" style="accent-color:var(--gold-deep)" data-page-node-id="PXrsOZuW96pOqmQuTrnHvV"></td><td class="mono" data-page-node-id="IHFGGh4my6nUEf6jxE8Brt">#041</td><td class="preview" data-page-node-id="57wgfn2NY8UD4nC5w39xYD">RAG 检索增强生成的核心流程：解析 → 分块 → 向量化 → 混合检索 → 重排 → 生成…</td><td class="mono" data-page-node-id="TIILB2ORNMdpcKAV6RGlYY">FDE知识包.md</td><td data-page-node-id="CqbHOfjf00t8E6wJKGqySI"><span class="badge b-gold" data-page-node-id="R5FcgHyBoAXum8YD3HOKah">标准</span></td><td class="mono" data-page-node-id="AouIwqeLP17rK0EG6Ny9bp">512</td><td class="mono" data-page-node-id="NhGMJy5delImEEvQDhwVaH">09-18</td><td data-page-node-id="V8pr80YniAKHH1rinmytb8"><button class="btn sm ghost" data-page-node-id="fmSlf8TsmQEgAqPMEFfPug">编辑</button></td></tr>
+      <tr data-page-node-id="RIQtxtmabUcv7JLVAYr5gg"><td data-page-node-id="DFQdTmzWdHpM3Tzofve8GN"><input type="checkbox" style="accent-color:var(--gold-deep)" data-page-node-id="xiNx1E68qylIkDagWm7X5f"></td><td class="mono" data-page-node-id="WKhN705ftLeKZdpodEgGfE">#042</td><td class="preview" data-page-node-id="o37P5yWFeR3CzFyAbiFDHs">向量库选型决策树：数据量 &lt; 10 万条用本地轻量方案，企业级持久化选 Chroma…</td><td class="mono" data-page-node-id="QGwLV2BME4lqNsuByKiAF1">FDE知识包.md</td><td data-page-node-id="bxOgTlRJyiKrEFPhzxVAdb"><span class="badge b-gold" data-page-node-id="VCKx6y2cQajaOfWTCEhDD9">标准</span></td><td class="mono" data-page-node-id="Ycqc5pFJ3qiHE0nyf6u76K">498</td><td class="mono" data-page-node-id="MEVnhd6UPsqcJxLXSRTFzD">09-18</td><td data-page-node-id="2c5BFbdc1k0n7neQxtdtpu"><button class="btn sm ghost" data-page-node-id="v2pgIoH1wCo3RaJbfeaMOn">编辑</button></td></tr>
+      <tr data-page-node-id="riWHxPRgELIc7EcR8D3OAW"><td data-page-node-id="eRhIIU0azUK9cC4dTUgifh"><input type="checkbox" style="accent-color:var(--gold-deep)" data-page-node-id="Sdk0VvmSNsl5RG1DSLoiVz"></td><td class="mono" data-page-node-id="MZz197yJhWHHt76jaAMLy3">#117</td><td class="preview" data-page-node-id="yiqpb0ZGvgG1UB5tPinZbS">POC 阶段（1-2 周）：允许试错，验证场景可行性；内测阶段（1-2 月）：收敛…</td><td class="mono" data-page-node-id="0lQFzd1jGXoSzYUvwxxOle">零成本30天FDE案例.md</td><td data-page-node-id="QFn0xDXGSS0qx0EMVQpIBF"><span class="badge b-gold" data-page-node-id="Eul1PdLK2T7aEK6vDZwiNg">标准</span></td><td class="mono" data-page-node-id="B8kb9EqsnS7VYAiTi2Ecvx">505</td><td class="mono" data-page-node-id="P5pGDGODI9RgrPSywTwwih">09-18</td><td data-page-node-id="juYw6LHTHq0lqHjLjHNviA"><button class="btn sm ghost" data-page-node-id="BBgCQjpiGCnftnHfCGQzLA">编辑</button></td></tr>
+      <tr data-page-node-id="33i1aRzJzXi0u9x0A0k6w7"><td data-page-node-id="LHejEhB1ac6BRpgvovJ9kC"><input type="checkbox" style="accent-color:var(--gold-deep)" data-page-node-id="Qp1XWQPcduYiMhKrmrNmCZ"></td><td class="mono" data-page-node-id="8Y4GcVV4zxdkrhjYdg2YzF">#118</td><td class="preview" data-page-node-id="yY05OSWlSEJXJ3BqF8pgBV">回滚预案三要素：触发条件、回滚步骤、验证标准。发布前必须先写回滚方案…</td><td class="mono" data-page-node-id="uh1IW6ZHEua8AgwueaqFcb">零成本30天FDE案例.md</td><td data-page-node-id="k8s3MNkM8yli7HUNWWmnOK"><span class="badge b-gold" data-page-node-id="AZ0eGoPWID6WA7gDsA3vip">标准</span></td><td class="mono" data-page-node-id="qFPBz2Em3rIAYQsqbiygt1">487</td><td class="mono" data-page-node-id="GeGtFCApBw5V9dzf4bL7Ab">09-18</td><td data-page-node-id="mObBX8wfjCI7IvjjHGeDAC"><button class="btn sm ghost" data-page-node-id="k82rCmeINTrmCD6nilFovq">编辑</button></td></tr>
+      <tr data-page-node-id="u11EY5feXydgwXEMDxx14D"><td data-page-node-id="hhoG4talusGzD0lAqR3vid"><input type="checkbox" style="accent-color:var(--gold-deep)" data-page-node-id="OueUWaKriG6Xu2bi7ari1n"></td><td class="mono" data-page-node-id="AD6vcHXzAPi4CzUPA2wLNS">#008</td><td class="preview" data-page-node-id="DULF1hEhe0hjpQeZhjdbbJ">LTC（Lead to Cash）从线索到回款的全流程：线索 → 商机 → 报价 → 合同…</td><td class="mono" data-page-node-id="NA0NekgxftN2W9GJsEihC1">项目汇总.md</td><td data-page-node-id="c7vXMMiJXtvdOEt2gqHZja"><span class="badge b-gold" data-page-node-id="l2fY4ooP6vO2HAHIKOFrJS">标准</span></td><td class="mono" data-page-node-id="RRd885quQu1bywIO15LEZn">530</td><td class="mono" data-page-node-id="L5KzXn5vRhZmejMHcpG6EG">09-18</td><td data-page-node-id="DHeMMLArExS4sRb0E2Kl0T"><button class="btn sm ghost" data-page-node-id="6irLpCfr8lUFhqgRrLvTmW">编辑</button></td></tr>
+    </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px" data-page-node-id="DzgLBFLPxCgjASEf9MVhMA">
+      <span class="mono" style="font-size:11px" data-page-node-id="VOotK08lfFJBgTK92a5zGI">已选 1 条 · 每页 10 条</span>
+      <div style="display:flex;gap:6px" data-page-node-id="t8QsiLxmAv0IE1kEwmBEdp"><button class="btn sm ghost" data-page-node-id="O2dnkiolkAGI6sI3kU2WBI">上一页</button><button class="btn sm" data-page-node-id="A5NdzM5aPDssNkioHkPYNv">1</button><button class="btn sm ghost" data-page-node-id="xcTFVdNG4gj2eQfTpIjR2B">2</button><button class="btn sm ghost" data-page-node-id="BguGsaQFMS0nYTv4va0QCn">…</button><button class="btn sm ghost" data-page-node-id="SDQFbpQGd1f0wClhQyqCUS">21</button><button class="btn sm ghost" data-page-node-id="GhwiEn4ry9aMXRI5QG67yI">下一页</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 视图 5：提示词工程 ── -->
+<section class="view" id="v-prompt" data-page-node-id="FsSGjuVHUtyBcMYw66AWKI">
+  <div class="topbar" data-page-node-id="9BQN0XGAlPAnpWEyAPKki3">
+    <div data-page-node-id="20IqAwD4svU1fuULwlVIyZ">
+      <div class="crumb" data-page-node-id="i4eRL35w8j4WkYKlavkXWX">PROMPT · fabe.txt · 412 字符</div>
+      <h2 data-page-node-id="0P7u1WC9xIGKw1fRpnoKlC">提示词工程</h2>
+    </div>
+    <div class="actions" data-page-node-id="kpJ2d4OwvBiVF5YfyMpxFw"><button class="btn sm ghost" data-page-node-id="NCcPOOUIC3iXON7DFj9A48">恢复默认</button><button class="btn sm gold" data-page-node-id="xZCQS7aQvORcImvSAfi8ZO">保存</button></div>
+  </div>
+
+  <div class="grid2" style="grid-template-columns:1.7fr 1fr" data-page-node-id="nR0RY7leRLFBjMx6k1pIz7">
+    <div data-page-node-id="Yd4KrRnPruadeLd4X3NbJZ">
+      <div class="editor" data-page-node-id="jiFrNDlQp85Pbplwnc2nFa">你是一个企业知识库问答助手。<br data-page-node-id="KfnZ6i8GVkyVVGz4wn3hlB">
+<span class="cm" data-page-node-id="0r1wxlr1OMOZy9BAIOdoc4">// 角色与边界</span><br data-page-node-id="fgrTjgxAjrN7F43CGtOmZL">
+只依据【检索资料】回答；资料不足时明确说"知识库中暂无相关内容"。<br data-page-node-id="7S6ECTvzdnRnLHN3yEvmYg">
+<span class="cm" data-page-node-id="CHEpqkAxg3ep8uqWRoGT7H">// 拒答阈值</span><br data-page-node-id="PCsz8xW9I5g56Mh8iLxBDo">
+<span class="v" data-page-node-id="r02aqYk1OEjsD7ke87j601">{{REJECT_THRESHOLD}}</span>：最高相关度 &lt; <span class="v" data-page-node-id="VaJaquO8sHkRN86HPftMYU">0.35</span> 时拒答，不得自由发挥。<br data-page-node-id="Vmerl64xgzBjn0PX9OrFA8">
+<span class="cm" data-page-node-id="lxZWgB7TntRuOh90vCflNA">// 输出格式</span><br data-page-node-id="bMXZAiymaVeZDCMtutHdN8">
+① 先给结论（一句话）② 再给依据（引用 <span class="v" data-page-node-id="kuToHdNdBTn8kXJQ6xkaGa">{{SOURCES}}</span> 编号）③ 必要时给步骤。</div>
+      <div class="toolrow" data-page-node-id="1vJUMzG3jD9zjhsy3rEnE9">
+        <span class="badge b-ok" data-page-node-id="3lOtabh1xi3h85CJMD10K6">语法校验通过</span><span class="mono" style="font-size:11px" data-page-node-id="xxEAFhc2ZXvAuXGCGVPqcM">412 字符 · 6 变量</span><span style="flex:1" data-page-node-id="Hk1ZqkDmRw7SCOGG6cLwSZ"></span><span style="font-size:11.5px;color:var(--ink-3)" data-page-node-id="jVtsAf1uSSXftj5jvRmh18">上次保存 09-18 17:42</span>
+      </div>
+    </div>
+    <div data-page-node-id="n9bnLvBQ5DzCAlGXBctzgQ">
+      <div class="card" style="margin-bottom:14px" data-page-node-id="cWX8mtwuaRSzdH6YbZE3lY">
+        <h3 data-page-node-id="hFKESBW8C4xE2dGvfrkVMC">可用变量</h3>
+        <div class="hint" data-page-node-id="ybFWck46DtQ6nphKPZFs28">保存后下次问答即时生效</div>
+        <div class="row" data-page-node-id="JOvGHOjoZyDg2BxqNcErZo"><span class="mono" style="color:var(--gold-deep)" data-page-node-id="P3f75WMHTEmIIo1IOSZQ05">{{SOURCES}}</span><span class="t" style="font-size:12px;flex:1" data-page-node-id="KUvA5THdTy1HDxqF801M24">检索到的片段</span></div>
+        <div class="row" data-page-node-id="AZW4JJowjt3KHW9tNzasyX"><span class="mono" style="color:var(--gold-deep)" data-page-node-id="VNQSbxKbu9w12ABmKCxo4L">{{QUESTION}}</span><span class="t" style="font-size:12px;flex:1" data-page-node-id="FRtu8Ai7bIS18cIkpYKRq9">用户问题</span></div>
+        <div class="row" data-page-node-id="biVIwNtEqCPflDJh1cyLKS"><span class="mono" style="color:var(--gold-deep)" data-page-node-id="FZU6dXwlwRbTbptNF1EvmM">{{REJECT_THRESHOLD}}</span><span class="t" style="font-size:12px;flex:1" data-page-node-id="AdeMOTREOzqwDPy3MaefBu">拒答阈值 0-1</span></div>
+      </div>
+      <div class="card" data-page-node-id="r7YEclTlMin3F1KGjMFqgL">
+        <h3 data-page-node-id="bxIYqYVw7jMHYbSIZm7NzM">调优建议</h3>
+        <div class="hint" data-page-node-id="EnDQb9WJq6vN0dOwsppyDP">基于最近 20 次问答自动生成</div>
+        <div class="row" data-page-node-id="HbKreppPmUGJopwqbUuBc8"><span class="badge b-warn" data-page-node-id="uQ1sCGXWj0ATog0knpYqjC">风险</span><div class="t" style="font-size:12.5px;flex:1" data-page-node-id="yyoS3oGVNIbgyTk4jeopwa">未设拒答阈值，KB 外问题会被自由发挥</div></div>
+        <div class="row" data-page-node-id="4Sl1DjOiLiHuFtcun3wM5O"><span class="badge b-info" data-page-node-id="jOVNF2M0bolHjridVbmkdP">提示</span><div class="t" style="font-size:12.5px;flex:1" data-page-node-id="Hy2THoCkGbWJnuU9HJ1Tyo">回答平均 214 字，可加「限 150 字内」提速</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 视图 6：系统与缓存 ── -->
+<section class="view" id="v-sys" data-page-node-id="CZnhFcTGzCRNsi1KY8jOhX">
+  <div class="topbar" data-page-node-id="QBbyRspGNSRFshnKnlfOMH">
+    <div data-page-node-id="NaqMDkhyMg9IPucZlnrUth">
+      <div class="crumb" data-page-node-id="rxnmLBLGOcsykLM38SvNCE">SYSTEM · 运维与缓存</div>
+      <h2 data-page-node-id="7PxXErNUW6Wqv9LRLcV6cD">系统与缓存</h2>
+    </div>
+    <div class="actions" data-page-node-id="3AF7DUYVmBOxVxPYoDGUF3"><span class="pill" data-page-node-id="XaY4FiBJET8VYUFKk7AxsE">镜像 ltc-rag-bot-021</span></div>
+  </div>
+
+  <div class="grid2" style="grid-template-columns:1fr 1fr;margin-bottom:14px" data-page-node-id="kPfg5Mn6hFzhh6phbmHaa0">
+    <div class="card" data-page-node-id="3zgtmC0lIEemHwJoMR5r5b">
+      <h3 data-page-node-id="cXGM8I4XRMkkgsEidcIUip">Embedding 引擎</h3>
+      <div class="hint" data-page-node-id="guIq0ytJ6N0BulRGKFwKfC">切换后自动全量重建并持久化，跨重启生效</div>
+      <div class="row" data-page-node-id="8EC80JhEZomuKIGo22eMCM"><div style="flex:1" data-page-node-id="9gqhBgNOsV5rYDL0w1Njgx"><div class="t" data-page-node-id="oq2LxVPPrEpGAg5qnmY7Uj">当前后端</div><div class="meta" data-page-node-id="hiT9iGhOV0nTdRlPZnwntt">BAAI/bge-m3 · 1024 维 · SiliconFlow API</div></div><span class="badge b-ok" data-page-node-id="FBmrHbBl2xihSQd9L7WOGb">生效中</span></div>
+      <div class="row" data-page-node-id="5cXR2ZnrECmHi0ATDpXmGd"><div style="flex:1" data-page-node-id="oMw9QqJgH3fja2CldTRHlv"><div class="t" data-page-node-id="f1fUpVc9WoGu8huBRBsAji">备选：TF-IDF（本地）</div><div class="meta" data-page-node-id="HtwXJMtWEWTPmhfqmQDZ0D">零 API 依赖 · 离线可用 · 精度较低</div></div><button class="btn sm ghost" data-page-node-id="225Q77Mlhwqvd7jn9kARKQ">切换</button></div>
+      <div class="toolrow" data-page-node-id="4UFtvQ2KmgFgBUfGQgLv4y"><span style="font-size:11.5px;color:var(--ink-3)" data-page-node-id="EBjL3pyhNEsBiNotXCpGDC">上次重建 09-18 22:41 · 耗时 9.9s · 207 条</span><span style="flex:1" data-page-node-id="0lB9OnkY0svA4Yhbq4aaU4"></span><button class="btn sm ghost" data-page-node-id="6OHwqTrkOABgeTdouQvgMp">立即重建</button></div>
+    </div>
+    <div class="card" data-page-node-id="XubAgDQXR21cmaowYANisA">
+      <h3 data-page-node-id="AFj3EQZMxMsuLt5cljIEZF">答案缓存</h3>
+      <div class="hint" data-page-node-id="HPdCUDNypAaoTStghHCcOt">高频问题快照 · 随知识库指纹自动失效</div>
+      <div class="grid4" style="grid-template-columns:repeat(3,1fr);margin:6px 0 10px" data-page-node-id="aoqL3Lychhs1CyHwpdtOdt">
+        <div class="metric" style="padding:12px 14px" data-page-node-id="jPnFtM1w4QGY0GVoUbG7S8"><div class="lb" data-page-node-id="GOgLCRmHBsmb0yfDnBj9p2">快照</div><div class="num" style="font-size:24px" data-page-node-id="6k5GuYZMWwMSxLajPYke3D">3</div></div>
+        <div class="metric" style="padding:12px 14px" data-page-node-id="9BCHJNjz2MHAHKEMOFFsM5"><div class="lb" data-page-node-id="0Ikos7KzbozahlkyXU7J1U">命中热</div><div class="num gold-num" style="font-size:24px" data-page-node-id="HEXOFQIAQm8RfvDE2SEwvJ">1</div></div>
+        <div class="metric" style="padding:12px 14px" data-page-node-id="bR44MXR4mjtryE9cWrHGNO"><div class="lb" data-page-node-id="z497UptLActjXfY8B9JJdh">已失效</div><div class="num" style="font-size:24px;color:var(--warn)" data-page-node-id="1b9O2q4GLIWdIC0rKChzna">2</div></div>
+      </div>
+      <div class="toolrow" data-page-node-id="nzme51vFEcZSw3zaeSzwIa"><span style="font-size:11.5px;color:var(--ink-3)" data-page-node-id="s8UAW8FR8jnJs1NLfhHeZ6">失效快照不参与命中，可安全清理</span><span style="flex:1" data-page-node-id="0F2eDZ4gK4OOv4aqZVJV32"></span><button class="btn sm ghost" data-page-node-id="nYzFiuHBrKvwBDDemmB96O">清理失效</button><button class="btn sm ghost" style="color:var(--bad)" data-page-node-id="BdT4QPsoygxADsvlkFXBbz">清空全部</button></div>
+    </div>
+  </div>
+
+  <div class="grid2" style="grid-template-columns:1fr 1fr" data-page-node-id="fNK8LRoDanZ5yUh7aHVbi1">
+    <div class="card" data-page-node-id="UxDtUABuYHjOP5ZLQQXE4O">
+      <h3 data-page-node-id="C0woCamPBZRBOwMRi9vPez">环境信息</h3>
+      <div class="hint" data-page-node-id="DGI79Nybm3oRHdHfQdEG0x">只读 · 与控制台一致</div>
+      <div class="row" data-page-node-id="cIHD4uOr9PTdEZUbpIVhhO"><span class="t" style="flex:1" data-page-node-id="PJDhiPDV5cDL3VdlTwE8rh">环境</span><span class="mono" data-page-node-id="KqrM0Ct5HhLObZmuzrfKuG">lily0625ai-d1gp…41edd</span></div>
+      <div class="row" data-page-node-id="enIAnh0wixgfSYIyCorIlj"><span class="t" style="flex:1" data-page-node-id="suTDCkK98YFtX0lz3KPSZr">规格</span><span class="mono" data-page-node-id="m2VidEJxnVy1MoSxJvSjIH">1 C / 2 GB · 容器</span></div>
+      <div class="row" data-page-node-id="6gzPaCZ2TDwbrHMSYuUFZS"><span class="t" style="flex:1" data-page-node-id="ovnY3wT27McmMkBvQSSrkC">存储</span><span class="mono" data-page-node-id="TRFPllPUPM4qVxVR4E8xTn">COS → /mnt/chroma</span></div>
+      <div class="row" data-page-node-id="lRanKkH3BDHxNZgnsN8yah"><span class="t" style="flex:1" data-page-node-id="HVlUeQQqtBKtK8KHlq9gJD">公网访问</span><span class="badge b-ok" data-page-node-id="DDEQ2sTNqDTUsyuAg44Oky">已开启 + 鉴权</span></div>
+      <div class="row" data-page-node-id="vZNJqNMrko8EUHaFIeBGXv"><span class="t" style="flex:1" data-page-node-id="f9KCKHWuJCI4ttV8sE5svE">当前版本</span><span class="mono" data-page-node-id="Fa2kSHbEFmxDDgkG2S5M3q">v4.1 · 021</span></div>
+    </div>
+    <div class="card" data-page-node-id="Y6kKCAGeCvcylaPhWLUZaD">
+      <h3 data-page-node-id="wifCuMVOGpsj3zA3mljW9o">发布与回滚</h3>
+      <div class="hint" data-page-node-id="wFoTmfMFvf8oxtlTgeusK0">回滚需在服务器侧执行 rollback.sh</div>
+      <div class="row" data-page-node-id="Wiy6M4tMPjE8FF9e1OdzRE"><div style="flex:1" data-page-node-id="avnjWBiOZOrMg5QPNgZeK7"><div class="t" data-page-node-id="e5LuS63ksPgwohgjrR5CQM">回滚预案</div><div class="meta" data-page-node-id="4YyOdYVEtHTkUWyOG1OVd3">docs/回滚预案.md · 触发条件已定义</div></div><span class="badge b-ok" data-page-node-id="Cbsxk9bFM9YV07lj10T7SR">就绪</span></div>
+      <div class="row" data-page-node-id="T5cOWAKmC3jTt6P8MbGM0I"><div style="flex:1" data-page-node-id="1b3OI80KxNxPKvEk9L1bMU"><div class="t" data-page-node-id="fAM32C8288ucYIgl0jtI9N">上线巡检</div><div class="meta" data-page-node-id="tLGoveeCZAjLoxUcm9ezYl">0/10/30/60 分钟检查项</div></div><span class="badge b-ok" data-page-node-id="WkvrRNqG2prGwo8796xuam">就绪</span></div>
+      <div class="row" data-page-node-id="k7fekEefpf95HI8b6vgqvV"><div style="flex:1" data-page-node-id="rYOPX2DzLXW1IH8akRpE9E"><div class="t" data-page-node-id="sKsU0qwZzsP2lyofe4Fxm3">最近部署</div><div class="meta" data-page-node-id="U5cf57GwEPDubEYehEzTV1">09-18 22:41 · 021 · 零降级</div></div><span class="badge b-ok" data-page-node-id="7LoaybyCHUVDtXrdG5Sy5a">正常</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="note" data-page-node-id="UWwcYKHidzqwnUNPmjdSQz">
+  <b data-page-node-id="sNIDROUPvmo4wetKBGP4fF">设计说明</b> · 本页为静态效果图（假数据），用于确认视觉方向与信息架构。确认后按此实施：替换 <b data-page-node-id="ocDZFlPrbMGzeFFcCbD9d6">portal/index.html</b>（保留 <b data-page-node-id="LPO2M6Gu03cTD3oQHMf40Z">authOnly / {{AUTO_API_KEY}}</b> 注入机制），全部功能走现有 11 个 API，零后端改动、零新依赖（内联 SVG 图标 + jsDelivr 字体），Docker 构建即生效，git 可一键回滚。
+</div>
+
+</main>
+</div>
+
+<script>
+function go(v){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.nav a').forEach(e=>e.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelector('.nav a[data-v="'+v+'"]').classList.add('on');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</html>
